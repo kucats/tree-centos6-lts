@@ -1,0 +1,20 @@
+name: Legacy RPM builder smoke test
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile an unprivileged smoke-test RPM in an offline legacy container
+        run: bash build/smoke.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-smoke-rpm-not-for-release
+          path: dist/smoke/*.rpm
+          retention-days: 3

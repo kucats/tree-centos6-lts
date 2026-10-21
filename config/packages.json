@@ -1,0 +1,28 @@
+{
+  "baseline": "CentOS 6.10",
+  "architectures": [
+    "x86_64"
+  ],
+  "packages": [
+    {
+      "name": "openssl",
+      "priority": "critical",
+      "repository": "updates"
+    },
+    {
+      "name": "openssh",
+      "priority": "critical",
+      "repository": "updates"
+    },
+    {
+      "name": "curl",
+      "priority": "high",
+      "repository": "updates"
+    },
+    {
+      "name": "sudo",
+      "priority": "high",
+      "repository": "updates"
+    }
+  ]
+}

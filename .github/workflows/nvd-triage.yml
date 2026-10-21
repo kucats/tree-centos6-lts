@@ -1,0 +1,24 @@
+name: NVD CVE intake (triage only)
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  intake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fetch recently changed public CVE records
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: python3 scripts/nvd_triage.py --hours 48 --output dist/nvd-triage.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nvd-triage
+          path: dist/nvd-triage.json
+          retention-days: 14
