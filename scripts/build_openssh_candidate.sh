@@ -42,7 +42,7 @@ yum-builddep -y "$spec"
 rpmbuild -bp --define "_topdir $top" --define "dist .el6_10" "$spec"
 agent_source=$(find "$top/BUILD" -maxdepth 3 -name ssh-agent.c -type f -print -quit)
 test -s "$agent_source"
-grep -F "Conservatively deny ALL PKCS11" "$agent_source"
+grep -F "legacy agent cannot identify forwarded peers" "$agent_source"
 # Reject if any surviving request-dispatch call can still load provider.
 if grep -Eq '^[[:space:]]+process_(add|remove)_smartcard_key\(e\);' "$agent_source"; then
   echo 'FAIL: smartcard dispatch still reachable' >&2
