@@ -8,6 +8,8 @@ on:
       - "build/Dockerfile.sudo"
       - "tests/integration/sudoedit_cve_2023_22809.sh"
       - "tests/integration/sudo_abi_smoke.sh"
+      - "tests/integration/sudo_yum_upgrade.sh"
+      - "tests/test_repo_preview.py"
       - "scripts/create_repo_preview.sh"
       - "scripts/verify_repo_preview.py"
       - ".github/workflows/sudo-candidate.yml"
@@ -65,6 +67,14 @@ jobs:
             tree-centos6-lts-sudo-candidate:latest \
             bash /scripts/create_repo_preview.sh /candidate /preview
           python3 scripts/verify_repo_preview.py dist/yum-preview/6/x86_64
+      - name: Exercise offline yum upgrade with isolated CentOS 6 RPM database
+        run: |
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            --security-opt no-new-privileges \
+            -v "$PWD/tests/integration:/tests:ro" \
+            -v "$PWD/dist/yum-preview:/preview:ro" \
+            tree-centos6-lts-sudo-candidate:latest \
+            bash /tests/sudo_yum_upgrade.sh
       - name: Save UNTRUSTED preview metadata for review
         if: success()
         uses: actions/upload-artifact@v4
