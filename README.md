@@ -57,6 +57,12 @@ sudo 1.8.2 through 1.8.31p2 is affected, and CentOS 6.10's final `sudo-1.8.6p3-2
 
 `tests/integration/sudoedit_cve_2021_3156.sh` runs in a network-less container as an unprivileged user without any sudoers rights. It requires the original RPM to show the vulnerable signature (`sudoedit -s /` is accepted by the parser), records whether the oversized trailing-backslash input crashes it, then requires the candidate to reject `sudoedit -s`, `sudoedit -i` and the overflow input with a usage error, while `sudo -s` / `sudo -i` command output stays byte-identical. The advisory remains `pending`: no independent review, full policy regression or signing has happened.
 
+## php 5.3.3: CVE-2026-109618 / CVE-2026-109619 from kucats/php-backport
+
+`packages/php/` carries the manual PHP 5.3 port maintained in [kucats/php-backport](https://github.com/kucats/php-backport/tree/main/php53) (based on php-src [`712e60f9`](https://github.com/php/php-src/commit/712e60f9edfd03f0960fc4fc3c2c375f42b90aa2)), applied after the 114 vendor patches of `php-5.3.3-50.el6_10.src.rpm`. That repository records an isolated Apache/mod_php test (20/20, including a 1,999 MiB upload) and 271 vendor PHPTs with identical before/after results.
+
+Here, `.github/workflows/php-candidate.yml` rebuilds all php subpackages as `5.3.3-50.el6_10.tree1` and runs `tests/integration/php_multipart_cve_2026_109618.sh` without network: the original php-cgi parses a 5,000-part body without a part limit, the candidate stops at `max_input_vars + max_file_uploads` with the upstream warning, and an ordinary form with a file upload gives identical results. The historical `%check` suite is short-circuited in this CI build. Both advisories remain `pending`.
+
 ## Second SRPM experiment: curl and backend-dependent CVE reachability
 
 - Source: `curl-7.19.7-54.el6_10.src.rpm`, SHA-256 `02f7ca7f49b284972cad9289efdcfe232c17d31cdd812546a52fd9d429f74f90`.

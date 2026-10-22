@@ -1,0 +1,52 @@
+name: CentOS 6 php CVE-2026-109618/109619 candidate E2E
+on:
+  pull_request:
+    paths:
+      - "packages/php/**"
+      - "security/advisories/CVE-2026-10961*.json"
+      - "scripts/build_php_candidate.sh"
+      - "build/Dockerfile.php"
+      - "tests/integration/php_multipart_cve_2026_109618.sh"
+      - ".github/workflows/php-candidate.yml"
+  workflow_dispatch:
+concurrency:
+  group: php-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Obtain pinned CentOS 6.10 php SRPM
+        run: |
+          set -euo pipefail
+          mkdir -p dist/php
+          curl --fail --location --retry 3 --retry-delay 2 --max-time 300 \
+            'https://vault.centos.org/6.10/updates/Source/SPackages/php-5.3.3-50.el6_10.src.rpm' \
+            -o dist/php/php-5.3.3-50.el6_10.src.rpm
+          echo 'ddd0f179582dda7b9f0ef2936948e62455509a7ee651ecc24e33468a20b9b10a  dist/php/php-5.3.3-50.el6_10.src.rpm' | sha256sum --check
+      - name: Build php candidate in disposable CentOS 6 container
+        run: |
+          docker build --file build/Dockerfile.php --tag tree-centos6-php:build .
+          docker run --rm --cpus 4 --memory 12g --pids-limit 2048 \
+            -v "$PWD:/work:ro" -v "$PWD/dist/php:/out" \
+            tree-centos6-php:build bash /work/scripts/build_php_candidate.sh
+      - name: Compare baseline and candidate multipart handling (network-less)
+        run: |
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/php:/out:ro" \
+            tree-centos6-php:build bash /tests/php_multipart_cve_2026_109618.sh
+      - name: Upload unsigned candidate for review
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: centos6-php-UNVERIFIED-do-not-install
+          path: |
+            dist/php/*.tree1.*.rpm
+            dist/php/PHP-CANDIDATE.sha256
+          retention-days: 3
