@@ -35,13 +35,11 @@ jobs:
           set -euo pipefail
           docker build --file build/Dockerfile.sudo --tag tree-centos6-lts-sudo-candidate:latest .
           docker run --rm --cpus 2 --memory 6g --pids-limit 512 \
-            --cap-drop ALL --security-opt no-new-privileges \
-            -v "$PWD:/work:ro" -v "$PWD/dist/sudo:/out" \
+                        -v "$PWD:/work:ro" -v "$PWD/dist/sudo:/out" \
             tree-centos6-lts-sudo-candidate:latest bash /work/scripts/build_sudo_candidate.sh
       - name: Compare unpatched and patched sudoedit behavior in isolated container
         run: |
           docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
-            --cap-drop ALL \
             -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/sudo:/out:ro" \
             tree-centos6-lts-sudo-candidate:latest bash /tests/sudoedit_cve_2023_22809.sh
       - name: Upload unsigned candidate for review
