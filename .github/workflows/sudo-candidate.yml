@@ -8,6 +8,8 @@ on:
       - "build/Dockerfile.sudo"
       - "tests/integration/sudoedit_cve_2023_22809.sh"
       - "tests/integration/sudo_abi_smoke.sh"
+      - "scripts/create_repo_preview.sh"
+      - "scripts/verify_repo_preview.py"
       - ".github/workflows/sudo-candidate.yml"
   workflow_dispatch:
 concurrency:
@@ -51,6 +53,24 @@ jobs:
           docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
             -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/sudo:/out:ro" \
             tree-centos6-lts-sudo-candidate:latest bash /tests/sudoedit_cve_2023_22809.sh
+      - name: Construct UNSIGNED local yum metadata preview (not for publication)
+        run: |
+          set -euo pipefail
+          mkdir -p dist/yum-preview
+          docker run --rm --network none --cpus 2 --memory 512m --pids-limit 128 \
+            --cap-drop ALL --security-opt no-new-privileges \
+            -v "$PWD/scripts:/scripts:ro" -v "$PWD/dist/sudo:/candidate:ro" \
+            -v "$PWD/dist/yum-preview:/preview" \
+            tree-centos6-lts-sudo-candidate:latest \
+            bash /scripts/create_repo_preview.sh /candidate /preview
+          python3 scripts/verify_repo_preview.py dist/yum-preview/6/x86_64
+      - name: Save UNTRUSTED preview metadata for review
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: centos6-UNSIGNED-yum-metadata-DO-NOT-PUBLISH
+          path: dist/yum-preview/**
+          retention-days: 3
       - name: Upload unsigned candidate for review
         if: success()
         uses: actions/upload-artifact@v4
