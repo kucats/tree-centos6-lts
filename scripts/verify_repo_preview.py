@@ -1,64 +1,124 @@
 #!/usr/bin/env python3
-"""Validate the structure and SHA-256 of an *unsigned* local yum metadata preview.
+"""Inspect a local, unsigned yum preview; never trust or publish its contents.
 
-This is NOT a trust / GPG signature verifier or proof of security remediation.
+Checks SHA-256 from repomd -> metadata -> RPM, package identity, size and
+relative paths. This is *not* cryptographic release authentication.
 """
 import argparse
 import gzip
 import hashlib
 import pathlib
+import re
 import sys
 import xml.etree.ElementTree as ET
 
 REPO_NS = "{http://linux.duke.edu/metadata/repo}"
 COMMON_NS = "{http://linux.duke.edu/metadata/common}"
+HEX256 = re.compile(r"^[a-f0-9]{64}$")
+EXPECTED = ("sudo", "x86_64", "1.8.6p3", "29.el6_10.3.tree1")
+MAX_METADATA_BYTES = 16 * 1024 * 1024
+
+
+def _sha256(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def _metadata_path(root, href, directory=None):
+    if not href or not isinstance(href, str):
+        raise ValueError("missing relative location href")
+    parts = pathlib.PurePosixPath(href)
+    if parts.is_absolute() or ".." in parts.parts or "\\" in href:
+        raise ValueError("unsafe repository location")
+    path = (root / href).resolve()
+    parent = (root / directory).resolve() if directory else root
+    if not path.is_relative_to(parent) or not path.is_file():
+        raise ValueError("referenced repository file missing or escaped")
+    return path
+
+
+def _checksum(element):
+    if element is None or element.get("type") != "sha256":
+        raise ValueError("SHA-256 checksum required")
+    value = (element.text or "").strip().lower()
+    if not HEX256.fullmatch(value):
+        raise ValueError("malformed SHA-256 checksum")
+    return value
 
 
 def check(root):
     root = pathlib.Path(root).resolve()
-    errors = []
     manifest = root / "repodata/repomd.xml"
     if not manifest.is_file():
         return ["missing repodata/repomd.xml"]
+    if (root / "repodata/repomd.xml.asc").exists():
+        return ["unsigned preview unexpectedly has a metadata signature"]
     try:
         doc = ET.parse(manifest).getroot()
-    except (ET.ParseError, OSError) as exc:
-        return [f"invalid repomd.xml: {exc}"]
-    entries = [x for x in doc.findall(REPO_NS + "data")
-               if x.get("type") == "primary"]
-    if len(entries) != 1:
-        return ["exactly one primary metadata entry required"]
-    entry = entries[0]
-    checksum = entry.find(REPO_NS + "checksum")
-    location = entry.find(REPO_NS + "location")
-    if checksum is None or checksum.get("type") != "sha256" or not checksum.text:
-        return ["SHA-256 primary metadata checksum required"]
-    if location is None or not location.get("href"):
-        return ["primary metadata location required"]
-    href = location.get("href")
-    # Relative repository URLs must not traverse out of the preview.
-    resolved = (root / href).resolve()
-    if (pathlib.PurePosixPath(href).is_absolute() or
-            not resolved.is_relative_to(root / "repodata") or
-            not resolved.is_file()):
-        return ["primary metadata path escapes repodata/ or is absent"]
-    data = resolved.read_bytes()
-    if hashlib.sha256(data).hexdigest() != checksum.text.strip().lower():
-        errors.append("primary metadata SHA-256 mismatch")
-        return errors
-    try:
-        primary = ET.fromstring(gzip.decompress(data))
-    except (OSError, ET.ParseError) as exc:
-        return [f"primary metadata cannot be parsed: {exc}"]
-    names = []
-    for p in primary.findall(COMMON_NS + "package"):
-        name = p.find(COMMON_NS + "name")
-        names.append(name.text if name is not None else None)
-    if names != ["sudo"]:
-        errors.append(f"expected exactly sudo main RPM; got {names!r}")
-    if (root / "repodata/repomd.xml.asc").exists():
-        errors.append("preview unexpectedly contains metadata signature")
-    return errors
+        if doc.tag != REPO_NS + "repomd":
+            raise ValueError("invalid repomd namespace/root")
+        entries = doc.findall(REPO_NS + "data")
+        types = [entry.get("type") for entry in entries]
+        if len(types) != len(set(types)) or types.count("primary") != 1:
+            raise ValueError("duplicate metadata types or missing primary metadata")
+        primary = None
+        for entry in entries:
+            loc = entry.find(REPO_NS + "location")
+            href = loc.get("href") if loc is not None else None
+            target = _metadata_path(root, href, "repodata")
+            encoded = target.read_bytes()
+            if len(encoded) > MAX_METADATA_BYTES:
+                raise ValueError("metadata file exceeds size bound")
+            expected = _checksum(entry.find(REPO_NS + "checksum"))
+            if _sha256(encoded) != expected:
+                raise ValueError("metadata SHA-256 mismatch: " + str(entry.get("type")))
+            stored_size = entry.find(REPO_NS + "size")
+            if stored_size is not None and int(stored_size.text or "-1") != len(encoded):
+                raise ValueError("metadata size mismatch")
+            if entry.get("type") == "primary":
+                if not href.endswith(".xml.gz"):
+                    raise ValueError("primary metadata must be .xml.gz")
+                with gzip.open(target, "rb") as stream:
+                    decoded = stream.read(MAX_METADATA_BYTES + 1)
+                if len(decoded) > MAX_METADATA_BYTES:
+                    raise ValueError("decompressed primary metadata exceeds size bound")
+                rawsum = entry.find(REPO_NS + "open-checksum")
+                if rawsum is not None and _sha256(decoded) != _checksum(rawsum):
+                    raise ValueError("primary metadata uncompressed SHA-256 mismatch")
+                primary = ET.fromstring(decoded)
+        if primary is None or primary.tag != COMMON_NS + "metadata":
+            raise ValueError("missing or invalid primary metadata XML")
+        packages = primary.findall(COMMON_NS + "package")
+        if len(packages) != 1 or primary.get("packages") not in (None, "1"):
+            raise ValueError("preview must contain exactly one package")
+        pkg = packages[0]
+        if pkg.get("type") != "rpm":
+            raise ValueError("package type must be rpm")
+        def required(tag):
+            value = pkg.find(COMMON_NS + tag)
+            return value
+        name = required("name")
+        arch = required("arch")
+        version = required("version")
+        if (name is None or arch is None or version is None or
+                (name.text, arch.text, version.get("ver"), version.get("rel")) != EXPECTED or
+                version.get("epoch") not in ("0", None)):
+            raise ValueError("unexpected package name, architecture or EVR")
+        checksum = _checksum(required("checksum"))
+        loc = required("location")
+        href = loc.get("href") if loc is not None else None
+        rpmfile = _metadata_path(root, href)
+        expected_filename = "sudo-1.8.6p3-29.el6_10.3.tree1.x86_64.rpm"
+        if href != expected_filename:
+            raise ValueError("unexpected RPM filename/location")
+        payload = rpmfile.read_bytes()
+        if _sha256(payload) != checksum:
+            raise ValueError("RPM payload SHA-256 mismatch")
+        size = required("size")
+        if size is None or int(size.get("package", "-1")) != len(payload):
+            raise ValueError("RPM payload size mismatch")
+        return []
+    except (ET.ParseError, OSError, ValueError, TypeError, EOFError) as exc:
+        return [str(exc)]
 
 
 def main():
@@ -70,7 +130,7 @@ def main():
         print("FAIL:", err, file=sys.stderr)
     if errors:
         return 1
-    print("PASS: internal checksum and sudo RPM metadata in UNSIGNED preview")
+    print("PASS: unsigned yum preview repomd -> primary -> sudo RPM SHA-256 and EVR")
     return 0
 
 
