@@ -20,6 +20,8 @@ FILENAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9+_.-]*\.src\.rpm$")
 SHA256 = re.compile(r"^[a-f0-9]{64}$")
 CVE = re.compile(r"^CVE-[0-9]{4}-[0-9]{4,}$")
 VERSION = re.compile(r"^([0-9]+)\.([0-9]+)\.([0-9]+)(p[0-9]+)?$")
+# Inventory entries only need a sane RPM version; scope comparisons stay on VERSION.
+INVENTORY_VERSION = re.compile(r"^[0-9]+(\.[0-9A-Za-z]+)+$")
 
 
 def load(path):
@@ -59,7 +61,7 @@ def validate(inventory, scopes):
             issues.append("invalid SRPM filename for " + name)
         if url not in ("https://vault.centos.org/6.10/%s/Source/SPackages/%s" % (repo, fn) for repo in ("updates", "os")):
             issues.append("unrecognized source URL for " + name)
-        if not isinstance(item.get("version"), str) or not VERSION.fullmatch(item["version"]):
+        if not isinstance(item.get("version"), str) or not INVENTORY_VERSION.fullmatch(item["version"]):
             issues.append("unsupported package version for " + name)
         if not isinstance(item.get("release"), str) or not item["release"]:
             issues.append("missing release for " + name)

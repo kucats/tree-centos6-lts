@@ -15,6 +15,59 @@
       "baseline_install": [
         "zlib-devel"
       ]
+    },
+    "expat": {
+      "srpm": "expat-2.0.1-13.el6_8.src.rpm",
+      "url": "https://vault.centos.org/6.10/os/Source/SPackages/expat-2.0.1-13.el6_8.src.rpm",
+      "sha256": "1c09bb9d3eb76d17de44a027bb97381053fb94000567865ecc4569429afb4c57",
+      "dist": ".el6_8",
+      "patches": [
+        "CVE-2024-45490"
+      ],
+      "guards": {
+        "CVE-2024-45490": "if (len < 0) {"
+      },
+      "baseline_install": [
+        "expat-devel"
+      ]
+    },
+    "glibc": {
+      "srpm": "glibc-2.12-1.212.el6_10.3.src.rpm",
+      "url": "https://vault.centos.org/6.10/updates/Source/SPackages/glibc-2.12-1.212.el6_10.3.src.rpm",
+      "sha256": "343720baf52d494b96022005cace30033af4e71031b755df0c3c1dfca9f8824f",
+      "dist": ".el6_10",
+      "patches": [
+        "CVE-2024-2961",
+        "CVE-2022-23219",
+        "CVE-2021-3999"
+      ],
+      "guards": {
+        "CVE-2024-2961": "CVE-2024-2961: room for the SS2 designation.",
+        "CVE-2022-23219": "CVE-2022-23219: refuse names that do not fit into sun_path.",
+        "CVE-2021-3999": "A size of 1 byte is never useful (CVE-2021-3999)."
+      },
+      "baseline_install": [
+        "glibc-devel"
+      ]
+    },
+    "openssl": {
+      "srpm": "openssl-1.0.1e-58.el6_10.src.rpm",
+      "url": "https://vault.centos.org/6.10/updates/Source/SPackages/openssl-1.0.1e-58.el6_10.src.rpm",
+      "sha256": "1cf309d0d0460525932240d1bd974761af7c351219a8da8b6a6e4105e1eccfcd",
+      "dist": ".el6_10",
+      "patches": [
+        "CVE-2022-0778",
+        "CVE-2020-1971",
+        "CVE-2023-0286"
+      ],
+      "guards": {
+        "CVE-2022-0778": "If not found, a is not a square or p is not prime (CVE-2022-0778).",
+        "CVE-2020-1971": "OTHERNAME_cmp treats NULL != NULL so we do the same here (CVE-2020-1971).",
+        "CVE-2023-0286": "x400Address is parsed as an ASN1_STRING (CVE-2023-0286)."
+      },
+      "baseline_install": [
+        "openssl-devel"
+      ]
     }
   }
 }
