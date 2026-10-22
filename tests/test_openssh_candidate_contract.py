@@ -34,6 +34,10 @@ class AgentDenyContract(unittest.TestCase):
         self.assertIn("(20, 21, 26)", script)
         self.assertIn("DT_NEEDED dependencies unchanged", script)
         self.assertIn("rpm2cpio", script)
+        yum = (ROOT / "tests/integration/openssh_offline_yum_upgrade.sh").read_text()
+        self.assertIn("gpgcheck=0", yum)
+        self.assertIn("disablerepo", yum)
+        self.assertIn("PASS: offline yum RPM dependency transaction", yum)
 
 
 if __name__ == "__main__":
