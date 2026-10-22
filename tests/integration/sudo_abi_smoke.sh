@@ -4,8 +4,13 @@
 set -euo pipefail
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-candidate=$(find /out -maxdepth 1 -type f -name 'sudo-*.x86_64.rpm' -print -quit)
-test -n "$candidate"
+candidate=$(find /out -maxdepth 1 -type f -name 'sudo-[0-9]*.x86_64.rpm' -print -quit)
+if [[ -z "$candidate" ]]; then
+  echo 'Missing sudo main RPM; refusing to inspect devel or debuginfo RPM' >&2
+  exit 1
+fi
+echo "ABI candidate: $candidate"
+rpm -qp --qf '%{NAME}\n' "$candidate" | grep -qx sudo
 (
   cd "$tmp"
   rpm2cpio "$candidate" | cpio -idm --quiet
