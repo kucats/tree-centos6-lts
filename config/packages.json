@@ -43,6 +43,11 @@
       "name": "krb5",
       "priority": "high",
       "repository": "os"
+    },
+    {
+      "name": "bind",
+      "priority": "high",
+      "repository": "updates"
     }
   ]
 }

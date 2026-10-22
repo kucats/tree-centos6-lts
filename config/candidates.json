@@ -83,6 +83,22 @@
       "baseline_install": [
         "krb5-devel"
       ]
+    },
+    "bind": {
+      "srpm": "bind-9.8.2-0.68.rc1.el6_10.8.src.rpm",
+      "url": "https://vault.centos.org/6.10/updates/Source/SPackages/bind-9.8.2-0.68.rc1.el6_10.8.src.rpm",
+      "sha256": "b86b1a45c7822e0869706835aea7a39e1565ab1a24b4d81bd6bcdf99453c8706",
+      "dist": ".el6_10",
+      "patches": [
+        "CVE-2021-25215"
+      ],
+      "guards": {
+        "CVE-2021-25215": "do not need to free it here (CVE-2021-25215)."
+      },
+      "baseline_install": [
+        "bind",
+        "bind-utils"
+      ]
     }
   }
 }
