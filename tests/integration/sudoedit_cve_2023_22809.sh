@@ -2,9 +2,9 @@
 # Executes only inside an ephemeral CentOS 6 container, after RPM candidate build.
 set -euo pipefail
 useradd -m -s /bin/sh centos6check
-printf '%s\\n' 'centos6check ALL=(root) NOPASSWD: sudoedit /tmp/tree-allowed' >>/etc/sudoers
-printf '%s\\n' 'baseline allowed' >/tmp/tree-allowed
-printf '%s\\n' 'baseline protected' >/tmp/tree-protected
+printf '%s\n' 'centos6check ALL=(root) NOPASSWD: sudoedit /tmp/tree-allowed' >>/etc/sudoers
+printf '%s\n' 'baseline allowed' >/tmp/tree-allowed
+printf '%s\n' 'baseline protected' >/tmp/tree-protected
 chmod 0644 /tmp/tree-allowed
 chmod 0600 /tmp/tree-protected
 run_case() {
