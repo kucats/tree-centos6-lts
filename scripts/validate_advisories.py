@@ -56,13 +56,14 @@ def validate_document(doc, filename, root, packages, release=False):
         sha = doc.get("patch_sha256")
         if not isinstance(sha, str) or not SHA_RE.fullmatch(sha):
             errors.append("patch_sha256 must be a lowercase SHA-256 hex digest")
-        if not isinstance(path, str) or not path.startswith("patches/"):
-            errors.append("patch_path must be under patches/")
+        pkg_dir = "packages/" + str(doc.get("package")) + "/"
+        if not isinstance(path, str) or not path.startswith(pkg_dir):
+            errors.append("patch_path must be under " + pkg_dir)
         else:
             candidate = (root / path).resolve()
-            patch_root = (root / "patches").resolve()
+            patch_root = (root / pkg_dir).resolve()
             if not candidate.is_relative_to(patch_root) or not candidate.is_file():
-                errors.append("patch_path must resolve to an existing file inside patches/")
+                errors.append("patch_path must resolve to an existing file inside " + pkg_dir)
             elif isinstance(sha, str) and SHA_RE.fullmatch(sha):
                 if hashlib.sha256(candidate.read_bytes()).hexdigest() != sha:
                     errors.append("patch_sha256 mismatch")

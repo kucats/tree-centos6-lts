@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+# rpm 4.8 reads the signing passphrase from a terminal; feed it from the environment.
+set timeout 300
+set pass ""
+if {[info exists env(TREE_SIGNING_PASSPHRASE)]} { set pass $env(TREE_SIGNING_PASSPHRASE) }
+log_user 1
+eval spawn rpm --addsign $argv
+expect {
+  "Enter pass phrase:" { send -- "$pass\r"; exp_continue }
+  eof
+}
+lassign [wait] pid spawnid os_error value
+exit $value

@@ -1,0 +1,7 @@
+# Disposable CentOS 6 environment for signing and consuming the yum repository in CI.
+FROM centos:6@sha256:a93df2e96e07f56ea48f215425c6f1673ab922927894595bb5c0ee4c5a955133
+RUN rm -f /etc/yum.repos.d/*.repo
+COPY build/CentOS-Vault.repo /etc/yum.repos.d/CentOS-Vault.repo
+RUN yum -y install createrepo expect gnupg2 pygpgme rpm-build yum-plugin-security sudo \
+    && (yum -y install rpm-sign || true) && yum clean all
+WORKDIR /work

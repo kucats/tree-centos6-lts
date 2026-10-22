@@ -1,0 +1,20 @@
+{
+  "channel": "tree-centos6-lts",
+  "base_url": "https://kucats.github.io/tree-centos6-lts/6/x86_64/",
+  "key_url": "https://kucats.github.io/tree-centos6-lts/RPM-GPG-KEY-tree-centos6-lts",
+  "signing_key_fingerprint": "",
+  "updates": [
+    {
+      "id": "TREE-2026:0001",
+      "title": "Important: sudo security update",
+      "severity": "Important",
+      "issued": "2026-10-22",
+      "package": "sudo",
+      "version": "1.8.6p3",
+      "release": "29.el6_10.3.tree1",
+      "arch": "x86_64",
+      "rpms": ["sudo", "sudo-devel"],
+      "advisories": ["CVE-2021-3156", "CVE-2023-22809"]
+    }
+  ]
+}
