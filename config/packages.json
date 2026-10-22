@@ -38,6 +38,11 @@
       "name": "glibc",
       "priority": "critical",
       "repository": "updates"
+    },
+    {
+      "name": "krb5",
+      "priority": "high",
+      "repository": "os"
     }
   ]
 }

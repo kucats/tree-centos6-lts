@@ -68,6 +68,21 @@
       "baseline_install": [
         "openssl-devel"
       ]
+    },
+    "krb5": {
+      "srpm": "krb5-1.10.3-65.el6.src.rpm",
+      "url": "https://vault.centos.org/6.10/os/Source/SPackages/krb5-1.10.3-65.el6.src.rpm",
+      "sha256": "ef68217916805c5e068c1dbc216203897041077ab15a762f040576eb464ee8e3",
+      "dist": ".el6",
+      "patches": [
+        "CVE-2022-42898"
+      ],
+      "guards": {
+        "CVE-2022-42898": "Bound the PAC buffer count (CVE-2022-42898)."
+      },
+      "baseline_install": [
+        "krb5-devel"
+      ]
     }
   }
 }
