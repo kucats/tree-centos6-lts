@@ -15,18 +15,18 @@ import re, sys
 from pathlib import Path
 spec = Path(sys.argv[1])
 s = spec.read_text()
-s, n = re.subn(r'(?m)^(Release:\\s*[^\\n]+)$', r'\\1.tree1', s, count=1)
+s, n = re.subn(r'(?m)^(Release:\s*[^\n]+)$', r'\1.tree1', s, count=1)
 assert n == 1, 'Release field not found'
 assert 'Patch7999:' not in s and '%patch7999' not in s, 'Patch ID conflict'
-match = re.search(r'(?m)^%description(?:\\s|$)', s)
+match = re.search(r'(?m)^%description(?:\s|$)', s)
 assert match, 'missing %description'
-s = s[:match.start()] + 'Patch7999: tree-CVE-2023-22809.patch\\n\\n' + s[match.start():]
-prep = re.search(r'(?m)^%prep(?:\\s|$)', s)
+s = s[:match.start()] + 'Patch7999: tree-CVE-2023-22809.patch\n\n' + s[match.start():]
+prep = re.search(r'(?m)^%prep(?:\s|$)', s)
 assert prep, 'missing %prep'
-next_section = re.search(r'(?m)^%(build|install|check|clean|files|changelog)(?:\\s|$)', s[prep.end():])
+next_section = re.search(r'(?m)^%(build|install|check|clean|files|changelog)(?:\s|$)', s[prep.end():])
 assert next_section, 'cannot find end of %prep'
 pos = prep.end() + next_section.start()
-s = s[:pos] + '%patch7999 -p1\\n\\n' + s[pos:]
+s = s[:pos] + '%patch7999 -p1\n\n' + s[pos:]
 spec.write_text(s)
 print('Added Patch7999, appended .tree1 release; RPM candidate only')
 PY
@@ -37,5 +37,5 @@ SOURCE=$(find "$TOP/BUILD" -path '*/plugins/sudoers/sudoers.c' -type f -print -q
 test -n "$SOURCE"
 grep -F 'editor arguments may not contain' "$SOURCE"
 rpmbuild -bb --define "_topdir $TOP" "$SPEC"
-find "$TOP/RPMS" -type f -name '*.rpm' -exec cp -v {} /out/ \\;
-rpm -qp --queryformat '%{NAME} %{VERSION}-%{RELEASE} %{ARCH}\\n' /out/sudo-*.x86_64.rpm
+find "$TOP/RPMS" -type f -name '*.rpm' -exec cp -v {} /out/ \;
+rpm -qp --queryformat '%{NAME} %{VERSION}-%{RELEASE} %{ARCH}\n' /out/sudo-*.x86_64.rpm
