@@ -8,6 +8,7 @@ on:
       - "security/advisories/CVE-2026-59995.json"
       - "security/advisories/CVE-2026-59999.json"
       - "security/advisories/CVE-2026-73282.json"
+      - "security/advisories/CVE-2026-*.json"
       - "scripts/audit_openssh_source.sh"
       - "scripts/verify_openssh_prep.sh"
       - "build/Dockerfile.openssh"
