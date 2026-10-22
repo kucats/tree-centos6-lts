@@ -35,9 +35,18 @@ jobs:
           base = os.environ.get('BASE')
           if base:
               changed = subprocess.check_output(['git', 'diff', '--name-only', base, 'HEAD'], text=True).split()
-              shared = any(not (f.startswith('packages/') or f.startswith('tests/integration/candidates/')) for f in changed)
+              # Metadata files do not change how other packages build.
+              meta = ('config/source-inventory.json', 'config/packages.json', 'config/candidates.json')
+              shared = any(not (f.startswith(('packages/', 'tests/integration/candidates/', 'security/advisories/'))
+                                or f in meta or f.endswith('.md')) for f in changed)
               if not shared:
-                  pkgs = [p for p in pkgs if any(f.startswith(('packages/%s/' % p, 'tests/integration/candidates/%s/' % p)) for f in changed)]
+                  try:
+                      old = json.loads(subprocess.check_output(['git', 'show', base + ':config/candidates.json'], text=True))['packages']
+                  except subprocess.CalledProcessError:
+                      old = {}
+                  new = json.load(open('config/candidates.json'))['packages']
+                  pkgs = [p for p in pkgs if old.get(p) != new.get(p)
+                          or any(f.startswith(('packages/%s/' % p, 'tests/integration/candidates/%s/' % p)) for f in changed)]
           print('packages=' + json.dumps(pkgs))
           PY
   candidate:
