@@ -15,6 +15,9 @@ yum-builddep -y "$SPEC"
 rpmbuild -bp --define "_topdir $TOP" --define "dist .el6_10" "$SPEC"
 SRC=$(find "$TOP/BUILD" -type f -path '*/lib/ssluse.c' -print -quit)
 test -n "$SRC"
+echo '---- CentOS 6.10 post-vendor-patch hostname verifier ----'
+sed -n '/cert_hostcheck(const char \*match_pattern/,/\/\* Quote from RFC2818/p' "$SRC" | head -90
+echo '---- end verifier ----'
 bash /work/tests/integration/curl_wildcard_smoke.sh "$SRC" before
 
 # Attach one reviewable patch, never replacing the original vendor patch set.
