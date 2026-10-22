@@ -21,5 +21,21 @@ echo "--- Actually prepared ssh-agent code and link targets ---"
 grep -n 'process_add_smartcard_key(' "$src"
 grep -n 'pkcs11_add_provider(' "$src"
 grep -n 'ssh-pkcs11-client.o' "$makefile"
+echo '--- Historical feature-presence report (source tokens only; not exploitability) ---'
+features() {
+  local label="$1" expr="$2"
+  shift 2
+  if grep -Eql "$expr" "$@"; then
+    echo "FEATURE ${label}: PRESENT in prepared source"
+  else
+    echo "FEATURE ${label}: NOT FOUND in prepared source"
+  fi
+}
+features ssh_agent_session_bind 'session-bind@openssh\.com' "$src"
+features sshd_DisableForwarding 'DisableForwarding' "$(dirname "$src")/servconf.c"
+features ssh_client_ControlPersist 'ControlPersist|controlpersist' "$(dirname "$src")/readconf.c"
+features sshd_GSSAPIAuthentication 'GSSAPIAuthentication|gssapiauthentication' "$(dirname "$src")/servconf.c"
+features sshd_PermitTunnel 'PermitTunnel|permittunnel' "$(dirname "$src")/servconf.c"
+features ssh_packet_zlib '(uncompress|deflate|inflate)' "$(dirname "$src")/packet.c"
 echo 'PASS: signed CentOS source RPM applies PKCS11 support in prepared ssh-agent implementation'
 echo 'LIMIT: compilation/runtime exposure and exploitability still require independent tests.'
