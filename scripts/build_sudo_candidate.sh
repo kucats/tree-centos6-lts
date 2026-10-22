@@ -12,9 +12,9 @@ SPEC="$TOP/SPECS/sudo.spec"
 test -f "$SPEC"
 python - "$SPEC" <<'PY'
 import re, sys
-from pathlib import Path
-spec = Path(sys.argv[1])
-s = spec.read_text()
+spec = sys.argv[1]
+with open(spec, 'r') as f:
+    s = f.read()
 s, n = re.subn(r'(?m)^(Release:\s*[^\n]+)$', r'\1.tree1', s, count=1)
 assert n == 1, 'Release field not found'
 assert 'Patch7999:' not in s and '%patch7999' not in s, 'Patch ID conflict'
@@ -27,7 +27,8 @@ next_section = re.search(r'(?m)^%(build|install|check|clean|files|changelog)(?:\
 assert next_section, 'cannot find end of %prep'
 pos = prep.end() + next_section.start()
 s = s[:pos] + '%patch7999 -p1\n\n' + s[pos:]
-spec.write_text(s)
+with open(spec, 'w') as f:
+    f.write(s)
 print('Added Patch7999, appended .tree1 release; RPM candidate only')
 PY
 yum-builddep -y "$SPEC"
