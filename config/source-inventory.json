@@ -17,6 +17,14 @@
       "filename": "curl-7.19.7-54.el6_10.src.rpm",
       "url": "https://vault.centos.org/6.10/updates/Source/SPackages/curl-7.19.7-54.el6_10.src.rpm",
       "sha256": "02f7ca7f49b284972cad9289efdcfe232c17d31cdd812546a52fd9d429f74f90"
+    },
+    {
+      "name": "openssh",
+      "version": "5.3p1",
+      "release": "124.el6_10",
+      "filename": "openssh-5.3p1-124.el6_10.src.rpm",
+      "url": "https://vault.centos.org/6.10/updates/Source/SPackages/openssh-5.3p1-124.el6_10.src.rpm",
+      "sha256": "da18c49ea13c0f0d373f7c0159da11381989f5616856f494a92f9ec03315ef56"
     }
   ]
 }
