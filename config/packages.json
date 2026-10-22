@@ -23,6 +23,11 @@
       "name": "sudo",
       "priority": "high",
       "repository": "updates"
+    },
+    {
+      "name": "zlib",
+      "priority": "high",
+      "repository": "os"
     }
   ]
 }

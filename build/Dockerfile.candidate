@@ -1,0 +1,7 @@
+# Disposable CentOS 6 builder/tester for generic candidates. Never deploy this image.
+FROM centos:6@sha256:a93df2e96e07f56ea48f215425c6f1673ab922927894595bb5c0ee4c5a955133
+RUN rm -f /etc/yum.repos.d/*.repo
+COPY build/CentOS-Vault.repo /etc/yum.repos.d/CentOS-Vault.repo
+ARG BASELINE=""
+RUN yum -y install rpm-build gcc make tar gzip bzip2 xz patch yum-utils $BASELINE && yum clean all
+WORKDIR /work

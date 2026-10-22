@@ -1,0 +1,20 @@
+{
+  "_comment": "Per-package candidate builds. patches are applied in order after every vendor %patch; each guard must appear in the post-%prep tree.",
+  "packages": {
+    "zlib": {
+      "srpm": "zlib-1.2.3-29.el6.src.rpm",
+      "url": "https://vault.centos.org/6.10/os/Source/SPackages/zlib-1.2.3-29.el6.src.rpm",
+      "sha256": "ccdc3260d2b1ee35c3d224154878f9f632fa2153ce7908ffaabd10b3e216d26e",
+      "dist": ".el6",
+      "patches": [
+        "CVE-2022-37434"
+      ],
+      "guards": {
+        "CVE-2022-37434": "(len = state->head->extra_len - state->length) <"
+      },
+      "baseline_install": [
+        "zlib-devel"
+      ]
+    }
+  }
+}
