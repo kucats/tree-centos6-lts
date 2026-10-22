@@ -1,0 +1,6 @@
+# Obsolete CentOS 6 inspection environment. No release secrets or production keys.
+FROM centos:6@sha256:a93df2e96e07f56ea48f215425c6f1673ab922927894595bb5c0ee4c5a955133
+RUN rm -f /etc/yum.repos.d/*.repo
+COPY build/CentOS-Vault.repo /etc/yum.repos.d/CentOS-Vault.repo
+RUN yum -y install rpm-build patch tar gzip bzip2 make autoconf automake && yum clean all
+WORKDIR /work

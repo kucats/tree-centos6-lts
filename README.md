@@ -75,6 +75,30 @@ sudo 1.8.2 through 1.8.31p2 is affected, and CentOS 6.10's final `sudo-1.8.6p3-2
 
 No signed yum repository, production-ready update, or comprehensive CentOS 6 CVE coverage has been established.
 
+## October 2026 historical CVE applicability audit
+
+The existing candidate sudo `.tree1` RPM includes pending patches for CVE-2021-3156 and CVE-2023-22809; this does **not** establish complete sudo security coverage or production readiness.
+
+Recent sudo CVEs have upstream introduction boundaries newer than CentOS 6 sudo 1.8.6p3. All remain `pending` pending downstream source review; no version-only comparison is a final release decision:
+
+| CVE | Upstream introduced | CentOS 6.10 provisional finding |
+| --- | --- | --- |
+| CVE-2025-32462 | sudo 1.8.8 | Likely not affected: 1.8.6p3 predates the host-option bug |
+| CVE-2026-96512 | sudo 1.8.20 | Likely not affected: time-based policy feature was introduced later |
+| CVE-2026-82474 | sudo 1.9.8 | Likely not affected: intercept policy support was introduced later |
+
+**High priority: OpenSSH CVE-2023-38408.** Upstream's affected-version list starts at 5.5, but Red Hat explicitly states RHEL 6 is affected. Examination of the officially signed CentOS 6.10 `openssh-5.3p1-124.el6_10.src.rpm` (SHA-256 `da18c49ea13c0f0d373f7c0159da11381989f5616856f494a92f9ec03315ef56`) found Red Hat's `openssh-5.3p1-pkcs11-support.patch` declared as `Patch103`. Its contents add PKCS#11 support to ssh-agent and a helper binary. Our dedicated GitHub Actions source audit attempts RPM `%prep` to confirm the applied vendor code, not merely the patch filename. The issue remains pending; no approved OpenSSH patch has been released. Oracle Linux 6 ELS advisory [ELSA-2023-4428](https://linux.oracle.com/errata/ELSA-2023-4428.html) contains a same-line 5.3p1 security fix, first shipped as `5.3p1-124.0.1`. Its later source RPM `openssh-5.3p1-124.0.2.el6_10.src.rpm` has vendor-listed SHA-256 `baa207d586d630ebd7549e7c656b1fe3fb4c06ad10b78ae3012964e13b0d4a2d`. This is a **reference donor to investigate**, not a verified or imported patch; access rights, code differences and independent compatibility testing remain open.
+
+Further OpenSSH advisories published in July–August 2026 have been added as **pending**, not assumed vulnerable: CVE-2026-59995 (sftp download path containment; review actual 5.3p1 sftp destination handling), CVE-2026-59999 (DisableForwarding versus PermitTunnel policy; first establish whether old sshd implements the relevant option), and CVE-2026-73282 (use-after-free in concurrent remote forwarding and multiplexing; especially audit CentOS/RHEL ControlPersist vendor patches). Reference: [OpenSSH releases](https://www.openssh.org/releasenotes.html), [NVD CVE-2026-59995](https://nvd.nist.gov/vuln/detail/CVE-2026-59995), [NVD CVE-2026-73282](https://nvd.nist.gov/vuln/detail/CVE-2026-73282).
+
+The latest [OpenSSH 10.6 release of October 6, 2026](https://www.openssh.org/releasenotes.html#10.6p1) and [Ubuntu's October 14, 2026 advisory](https://ubuntu.com/security/notices/USN-8928-1) identify nine more issues tracked as `pending` here: CVE-2026-106552, CVE-2026-106553, CVE-2026-106555, CVE-2026-106582, CVE-2026-106583, CVE-2026-106584, CVE-2026-106585, CVE-2026-106586 and CVE-2026-106587. High-priority review themes include GSSAPI authentication state carry-over, decompression bounds, shared compression side channels and command-line username injection. Separately, CVE-2026-73281 is provisionally not affected based on Red Hat's explicit RHEL6 statement that the `session-bind@openssh.com` extension began in 8.9; the status remains pending until historic source verification. The OpenSSH `%prep` audit reports source feature presence, not complete exploitability.
+
+For risk reduction while assessing the affected forwarded-agent scenario, disable SSH agent forwarding to untrusted destinations (`ForwardAgent no`; avoid `ssh -A`). This is not an all-purpose fix.
+
+The CentOS Vault GPG signatures (historical RSA/SHA1) authenticate old archive artifacts, not their present-day security. Pinned SHA-256 digests and independent source review remain necessary. No signing or production yum repository is enabled.
+
+References: [OpenSSH upstream](https://www.openssh.org/security.html), [Red Hat CVE-2023-38408](https://access.redhat.com/security/cve/cve-2023-38408), [sudo CVE-2025-32462](https://www.sudo.ws/security/advisories/host_any/), [sudo CVE-2026-96512](https://www.openwall.com/lists/oss-security/2026/09/24/4), [sudo NEWS](https://github.com/sudo-project/sudo/blob/main/NEWS).
+
 ## CVE decision contract
 
 One JSON file per CVE in security/advisories/CVE-YYYY-NNNN.json. Required keys include cve, package, status, and evidence (nonempty array of authoritative URLs). Status-specific fields are enforced by the validator:

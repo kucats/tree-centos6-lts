@@ -19,7 +19,7 @@ PKG_NAME = re.compile(r"^[a-z][a-z0-9+_.-]*$")
 FILENAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9+_.-]*\.src\.rpm$")
 SHA256 = re.compile(r"^[a-f0-9]{64}$")
 CVE = re.compile(r"^CVE-[0-9]{4}-[0-9]{4,}$")
-VERSION = re.compile(r"^([0-9]+)\.([0-9]+)\.([0-9]+)(p[0-9]+)?$")
+VERSION = re.compile(r"^([0-9]+)\.([0-9]+)(?:\.([0-9]+))?(p[0-9]+)?$")
 
 
 def load(path):
@@ -32,8 +32,8 @@ def version_before(baseline, introduced):
     b = VERSION.fullmatch(introduced)
     if a is None or b is None:
         raise ValueError("unsupported version syntax; needs manual review")
-    an = tuple(map(int, a.group(1, 2, 3)))
-    bn = tuple(map(int, b.group(1, 2, 3)))
+    an = tuple(int(x or 0) for x in a.group(1, 2, 3))
+    bn = tuple(int(x or 0) for x in b.group(1, 2, 3))
     if an == bn:
         raise ValueError("versions share a numeric triple; needs manual review")
     return an < bn
