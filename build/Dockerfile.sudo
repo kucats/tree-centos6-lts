@@ -1,0 +1,7 @@
+# Ephemeral CentOS 6 research build only; never deploy or reuse as a network service.
+FROM centos:6
+RUN rm -f /etc/yum.repos.d/*.repo
+COPY build/CentOS-Vault.repo /etc/yum.repos.d/CentOS-Vault.repo
+RUN yum -y install rpm-build gcc make tar gzip patch yum-utils sudo shadow-utils \
+    && yum clean all
+WORKDIR /work
