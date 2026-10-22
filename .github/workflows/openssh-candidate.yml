@@ -1,0 +1,55 @@
+name: CentOS 6 OpenSSH PKCS11-deny research candidate
+on:
+  pull_request:
+    paths:
+      - "packages/openssh/**"
+      - "scripts/build_openssh_candidate.sh"
+      - "tests/integration/openssh_agent_pkcs11_deny.sh"
+      - "build/Dockerfile.openssh-candidate"
+      - ".github/workflows/openssh-candidate.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: openssh-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download official CentOS 6 OpenSSH SRPM and verify fixed SHA-256
+        run: |
+          set -euo pipefail
+          mkdir -p dist/openssh-candidate
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --max-time 120 \
+            https://vault.centos.org/6.10/updates/Source/SPackages/openssh-5.3p1-124.el6_10.src.rpm \
+            -o dist/openssh-candidate/openssh-5.3p1-124.el6_10.src.rpm
+          echo 'da18c49ea13c0f0d373f7c0159da11381989f5616856f494a92f9ec03315ef56  dist/openssh-candidate/openssh-5.3p1-124.el6_10.src.rpm' | sha256sum -c -
+      - name: Verify original CentOS signing key and SRPM signature
+        run: bash scripts/verify_source_signatures.sh dist/openssh-candidate dist/openssh-candidate/provenance
+      - name: Build original-source, hardened-agent CentOS 6 candidate RPM/SRPM
+        run: |
+          docker build -f build/Dockerfile.openssh-candidate -t centos6-openssh-candidate:research .
+          docker run --rm --cpus 2 --memory 5g --pids-limit 512 \
+            -v "$PWD:/work:ro" -v "$PWD/dist/openssh-candidate:/out" \
+            centos6-openssh-candidate:research bash /work/scripts/build_openssh_candidate.sh
+      - name: Test normal SSH keys and safely denied PKCS11 requests without network
+        run: |
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            --cap-drop ALL --security-opt no-new-privileges \
+            -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/openssh-candidate:/out:ro" \
+            centos6-openssh-candidate:research bash /tests/openssh_agent_pkcs11_deny.sh
+      - name: Retain only unsigned temporary research RPMs
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: centos6-OpenSSH-CVE-2023-38408-UNVERIFIED-no-smartcard
+          path: |
+            dist/openssh-candidate/*tree1*.rpm
+            dist/openssh-candidate/OPENSSH-RESEARCH-CANDIDATE.sha256
+            dist/openssh-candidate/provenance/*
+          retention-days: 3
