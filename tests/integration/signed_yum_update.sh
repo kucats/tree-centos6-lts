@@ -44,6 +44,26 @@ expect_fail 'unsigned sudo RPM' yum_only tree-unsigned --noplugins update sudo
 
 # 3. The signed repository: security errata are visible and yum updates sudo.
 write_repo tree-centos6-lts "$repo" 1
+if ! yum -d 3 --disablerepo='*' --enablerepo=tree-centos6-lts -y makecache >/tmp/makecache.out 2>&1; then
+  tail -30 /tmp/makecache.out
+  gpgdir=/var/lib/yum/repos/x86_64/6/tree-centos6-lts/gpgdir
+  ls -la "$gpgdir" || true
+  gpg2 --homedir "$gpgdir" --list-keys --with-colons || true
+  gpg2 --homedir "$gpgdir" --verify "$repo/repodata/repomd.xml.asc" "$repo/repodata/repomd.xml" || true
+  python - "$repo" "$gpgdir" <<'PY2'
+import sys, gpgme
+from StringIO import StringIO
+repo, home = sys.argv[1:]
+ctx = gpgme.Context(); ctx.armor = True
+import os; os.environ['GNUPGHOME'] = home
+ctx = gpgme.Context()
+sigs = ctx.verify(StringIO(open(repo + '/repodata/repomd.xml.asc').read()),
+                  StringIO(open(repo + '/repodata/repomd.xml').read()), None)
+for x in sigs:
+    print 'fpr', x.fpr, 'summary', x.summary, 'validity', x.validity, 'status', x.status
+PY2
+  exit 1
+fi
 yum_only tree-centos6-lts updateinfo list security > /tmp/updateinfo.out 2>&1 || true
 cat /tmp/updateinfo.out
 grep -q 'TREE-2026:0001' /tmp/updateinfo.out
