@@ -49,6 +49,22 @@
       "filename": "openssl-1.0.1e-58.el6_10.src.rpm",
       "url": "https://vault.centos.org/6.10/updates/Source/SPackages/openssl-1.0.1e-58.el6_10.src.rpm",
       "sha256": "1cf309d0d0460525932240d1bd974761af7c351219a8da8b6a6e4105e1eccfcd"
+    },
+    {
+      "name": "krb5",
+      "version": "1.10.3",
+      "release": "65.el6",
+      "filename": "krb5-1.10.3-65.el6.src.rpm",
+      "url": "https://vault.centos.org/6.10/os/Source/SPackages/krb5-1.10.3-65.el6.src.rpm",
+      "sha256": "ef68217916805c5e068c1dbc216203897041077ab15a762f040576eb464ee8e3"
+    },
+    {
+      "name": "bind",
+      "version": "9.8.2",
+      "release": "0.68.rc1.el6_10.8",
+      "filename": "bind-9.8.2-0.68.rc1.el6_10.8.src.rpm",
+      "url": "https://vault.centos.org/6.10/updates/Source/SPackages/bind-9.8.2-0.68.rc1.el6_10.8.src.rpm",
+      "sha256": "b86b1a45c7822e0869706835aea7a39e1565ab1a24b4d81bd6bcdf99453c8706"
     }
   ]
 }
