@@ -70,7 +70,7 @@ sudo 1.8.2 through 1.8.31p2 is affected, and CentOS 6.10's final `sudo-1.8.6p3-2
 | Experiment | Verified result | Remaining release gate |
 | --- | --- | --- |
 | sudo / CVE-2023-22809 | [RPM/SRPM build, exact main-RPM selection, dynamic symbols, DT_NEEDED and sudoedit regression passed](https://github.com/kucats/tree-centos6-lts/actions/runs/39708887148) | Full policy regression, independent review, supply-chain signing |
-| sudo / CVE-2021-3156 | Candidate added; awaiting CI | Independent review, full policy regression, supply-chain signing |
+| sudo / CVE-2021-3156 | [RPM/SRPM build, ABI smoke, before/after sudoedit -s/-i regression and offline yum upgrade passed](https://github.com/kucats/tree-centos6-lts/actions/runs/39723659150) | Independent review, full policy regression, supply-chain signing |
 | curl / CVE-2023-28321 | [RPM/SRPM build and source-level before/after check passed; NSS/3.44 runtime detected](https://github.com/kucats/tree-centos6-lts/actions/runs/39708887176) | Decide applicability separately for default NSS vs optional OpenSSL builds; full suite and runtime integration |
 
 No signed yum repository, production-ready update, or comprehensive CentOS 6 CVE coverage has been established.
