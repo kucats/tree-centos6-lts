@@ -32,11 +32,21 @@ with open(spec, 'w') as f:
 print('Added Patch7999, appended .tree1 release; RPM candidate only')
 PY
 yum-builddep -y "$SPEC"
-rpmbuild -bp --define "_topdir $TOP" "$SPEC"
+rpmbuild -bp --define "_topdir $TOP" --define "dist .el6_10" "$SPEC"
 # Fail closed unless the actual post-%prep source contains the backport guard.
 SOURCE=$(find "$TOP/BUILD" -path '*/plugins/sudoers/sudoers.c' -type f -print -quit)
 test -n "$SOURCE"
 grep -F 'editor arguments may not contain' "$SOURCE"
-rpmbuild -bb --define "_topdir $TOP" "$SPEC"
+rpmbuild -ba --define "_topdir $TOP" --define "dist .el6_10" "$SPEC"
 find "$TOP/RPMS" -type f -name '*.rpm' -exec cp -v {} /out/ \;
+find "$TOP/SRPMS" -type f -name '*.src.rpm' -exec cp -v {} /out/ \;
 rpm -qp --queryformat '%{NAME} %{VERSION}-%{RELEASE} %{ARCH}\n' /out/sudo-*.x86_64.rpm
+# Preserve upgrade ordering over 29.el6_10.3, and record all candidate checksums.
+python - <<'PY'
+import rpm
+old = ('0', '1.8.6p3', '29.el6_10.3')
+new = ('0', '1.8.6p3', '29.el6_10.3.tree1')
+assert rpm.labelCompare(new, old) > 0, 'Candidate is not an RPM upgrade'
+print('PASS: candidate RPM release is newer than CentOS 6.10 baseline')
+PY
+sha256sum /out/*tree1*.rpm > /out/CANDIDATE.sha256
