@@ -29,7 +29,8 @@ jobs:
             -o dist/sudo/sudo-1.8.6p3-29.el6_10.3.src.rpm
           file dist/sudo/*.src.rpm
           sha256sum dist/sudo/*.src.rpm | tee dist/sudo/SOURCE.sha256
-          echo "::warning::SRPM SHA-256 needs to be pinned against a trusted CentOS source before any release."
+            dist/sudo/CANDIDATE.sha256
+          echo '7fa30b571a1bcb5762dd8754a17001a71080475b7eb7dffc831ea1f2e6bd809d  dist/sudo/sudo-1.8.6p3-29.el6_10.3.src.rpm' | sha256sum --check --status
       - name: Build in disposable CentOS 6 environment
         run: |
           set -euo pipefail
@@ -37,6 +38,11 @@ jobs:
           docker run --rm --cpus 2 --memory 6g --pids-limit 512 \
                         -v "$PWD:/work:ro" -v "$PWD/dist/sudo:/out" \
             tree-centos6-lts-sudo-candidate:latest bash /work/scripts/build_sudo_candidate.sh
+      - name: Check exported symbols and shared-library dependencies against baseline
+        run: |
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/sudo:/out:ro" \
+            tree-centos6-lts-sudo-candidate:latest bash /tests/sudo_abi_smoke.sh
       - name: Compare unpatched and patched sudoedit behavior in isolated container
         run: |
           docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
