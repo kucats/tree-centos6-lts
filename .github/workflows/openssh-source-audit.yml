@@ -6,6 +6,8 @@ on:
       - "config/source-inventory.json"
       - "security/advisories/CVE-2024-6387.json"
       - "scripts/audit_openssh_source.sh"
+      - "scripts/verify_openssh_prep.sh"
+      - "build/Dockerfile.openssh"
       - ".github/workflows/openssh-source-audit.yml"
   workflow_dispatch:
 permissions:
@@ -41,6 +43,15 @@ jobs:
             -v "$PWD/scripts/audit_openssh_source.sh:/audit.sh:ro" \
             centos:6@sha256:a93df2e96e07f56ea48f215425c6f1673ab922927894595bb5c0ee4c5a955133 \
             bash /audit.sh | tee dist/openssh/SOURCE-INSPECTION.txt
+      - name: Apply complete CentOS vendor patch set and assert PKCS11 code is present
+        run: |
+          set -euo pipefail
+          docker build -f build/Dockerfile.openssh -t centos6-openssh-prep:research .
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            -v "$PWD/dist/openssh:/sources:ro" \
+            -v "$PWD/scripts/verify_openssh_prep.sh:/verify-prep.sh:ro" \
+            centos6-openssh-prep:research bash /verify-prep.sh \
+            | tee dist/openssh/PKCS11-PREP-REACHABILITY.txt
       - name: Retain audit evidence without executable package artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -49,6 +60,7 @@ jobs:
           path: |
             dist/openssh/OBSERVED-SOURCE.sha256
             dist/openssh/SOURCE-INSPECTION.txt
+            dist/openssh/PKCS11-PREP-REACHABILITY.txt
             dist/openssh/provenance/*
           if-no-files-found: ignore
           retention-days: 7
