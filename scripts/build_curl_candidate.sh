@@ -38,6 +38,13 @@ section = re.search(r'(?m)^%(build|install|check|clean|files|changelog)(?:\s|$)'
 assert section, 'missing end of %prep'
 end = prep.end() + section.start()
 text = text[:end] + '%patch7998 -p1\n\n' + text[end:]
+# CentOS 6 rpm 4.8 lacks rpmbuild --nocheck. Preserve all RPM spec
+# sections but short-circuit the historical %check script for research CI.
+# The release gate must run the complete test suite separately.
+text, n_checks = re.subn(r'(?m)^(%check[ \\t]*\\n)',
+                         r'\\1exit 0 # candidate-only: full checks deferred\\n',
+                         text, count=1)
+print('Historical package check section bypassed:', n_checks)
 with open(path, 'w') as f:
     f.write(text)
 PY
@@ -51,7 +58,7 @@ bash /work/tests/integration/curl_wildcard_smoke.sh "$SRC" after
 # If the two-sided source tests pass, build candidate RPM + SRPM.
 # Research-only fast path: the historical upstream %check suite is deferred to
 # a separate, bounded release gate. This is NOT a complete regression test.
-rpmbuild -ba --nocheck --define "_topdir $TOP" --define "dist .el6_10" "$SPEC"
+rpmbuild -ba --define "_topdir $TOP" --define "dist .el6_10" "$SPEC"
 find "$TOP/RPMS" -type f -name '*.rpm' -exec cp -v {} /out/ \;
 find "$TOP/SRPMS" -type f -name '*.src.rpm' -exec cp -v {} /out/ \;
 rpm -qp --qf '%{NAME} %{VERSION}-%{RELEASE} %{ARCH}\n' /out/curl-*.x86_64.rpm
