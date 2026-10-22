@@ -46,11 +46,11 @@ class ScopeTests(unittest.TestCase):
     def test_header_guard(self):
         with tempfile.TemporaryDirectory() as temp:
             header = Path(temp) / "headers.tsv"
-            header.write_text("sudo\t1.8.6p3\t29.el6_10.3\ncurl\t7.19.7\t54.el6_10\n")
+            header.write_text("sudo\t1.8.6p3\t29.el6_10.3\ncurl\t7.19.7\t54.el6_10\nphp\t5.3.3\t50.el6_10\n")
             results = assess(self.inv, self.scopes, header)
             self.assertEqual(len(results), 2)
             self.assertTrue(all(r["requires_independent_review"] for r in results))
-            header.write_text("sudo\t1.9.14\t29.el6_10.3\ncurl\t7.19.7\t54.el6_10\n")
+            header.write_text("sudo\t1.9.14\t29.el6_10.3\ncurl\t7.19.7\t54.el6_10\nphp\t5.3.3\t50.el6_10\n")
             with self.assertRaises(ValueError):
                 assess(self.inv, self.scopes, header)
 

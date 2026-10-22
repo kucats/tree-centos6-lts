@@ -23,6 +23,11 @@
       "name": "sudo",
       "priority": "high",
       "repository": "updates"
+    },
+    {
+      "name": "php",
+      "priority": "high",
+      "repository": "updates"
     }
   ]
 }

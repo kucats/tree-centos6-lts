@@ -1,0 +1,27 @@
+--- a/php.spec
++++ b/php.spec
+@@ -18,7 +18,7 @@
+ Summary: PHP scripting language for creating dynamic web sites
+ Name: php
+ Version: 5.3.3
+-Release: 50%{?dist}
++Release: 50%{?dist}.tree1
+ License: PHP
+ Group: Development/Languages
+ URL: http://www.php.net/
+@@ -161,6 +161,7 @@
+ Patch272: php-5.3.3-CVE-2015-4644.patch
+ Patch273: php-5.3.3-CVE-2016-5385.patch
+ Patch274: php-5.3.3-CVE-2019-11043.patch
++Patch999: php-5.3.3-cve-2026-109618-109619.patch
+ 
+ 
+ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+@@ -632,6 +633,7 @@
+ %patch272 -p1 -b .cve4644
+ %patch273 -p1 -b .cve5385
+ %patch274 -p1 -b .cve11043
++%patch999 -p1 -b .tree1
+ 
+ # Prevent %%doc confusion over LICENSE files
+ cp Zend/LICENSE Zend/ZEND_LICENSE

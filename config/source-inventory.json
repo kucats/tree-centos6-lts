@@ -17,6 +17,14 @@
       "filename": "curl-7.19.7-54.el6_10.src.rpm",
       "url": "https://vault.centos.org/6.10/updates/Source/SPackages/curl-7.19.7-54.el6_10.src.rpm",
       "sha256": "02f7ca7f49b284972cad9289efdcfe232c17d31cdd812546a52fd9d429f74f90"
+    },
+    {
+      "name": "php",
+      "version": "5.3.3",
+      "release": "50.el6_10",
+      "filename": "php-5.3.3-50.el6_10.src.rpm",
+      "url": "https://vault.centos.org/6.10/updates/Source/SPackages/php-5.3.3-50.el6_10.src.rpm",
+      "sha256": "ddd0f179582dda7b9f0ef2936948e62455509a7ee651ecc24e33468a20b9b10a"
     }
   ]
 }
