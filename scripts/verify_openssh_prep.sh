@@ -9,7 +9,8 @@ test -s "$spec"
 echo "--- CentOS 6 SRPM PKCS11 patch declaration/application ---"
 grep -E '^Patch103:.*pkcs11' "$spec"
 grep -Ei '^%patch103([[:space:]]|$)' "$spec"
-rpmbuild -bp --define "_topdir $top" --define "dist .el6_10" "$spec" >/tmp/prep-stdout.log 2>&1 || {
+# Only run %prep, not compilation: historical BuildRequires are not needed.
+rpmbuild -bp --nodeps --define "_topdir $top" --define "dist .el6_10" "$spec" >/tmp/prep-stdout.log 2>&1 || {
     tail -100 /tmp/prep-stdout.log >&2
     exit 1
 }
