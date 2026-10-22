@@ -7,6 +7,7 @@ on:
       - "scripts/build_sudo_candidate.sh"
       - "build/Dockerfile.sudo"
       - "tests/integration/sudoedit_cve_2023_22809.sh"
+      - "tests/integration/sudo_abi_smoke.sh"
       - ".github/workflows/sudo-candidate.yml"
   workflow_dispatch:
 permissions:
