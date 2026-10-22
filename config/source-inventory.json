@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "baseline": "CentOS 6.10 x86_64",
+  "packages": [
+    {
+      "name": "sudo",
+      "version": "1.8.6p3",
+      "release": "29.el6_10.3",
+      "filename": "sudo-1.8.6p3-29.el6_10.3.src.rpm",
+      "url": "https://vault.centos.org/6.10/updates/Source/SPackages/sudo-1.8.6p3-29.el6_10.3.src.rpm",
+      "sha256": "7fa30b571a1bcb5762dd8754a17001a71080475b7eb7dffc831ea1f2e6bd809d"
+    },
+    {
+      "name": "curl",
+      "version": "7.19.7",
+      "release": "54.el6_10",
+      "filename": "curl-7.19.7-54.el6_10.src.rpm",
+      "url": "https://vault.centos.org/6.10/updates/Source/SPackages/curl-7.19.7-54.el6_10.src.rpm",
+      "sha256": "02f7ca7f49b284972cad9289efdcfe232c17d31cdd812546a52fd9d429f74f90"
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+name: CentOS 6 sudo CVE-2023-22809 candidate E2E
+on:
+  pull_request:
+    paths:
+      - "packages/sudo/**"
+      - "security/advisories/CVE-2023-22809.json"
+      - "scripts/build_sudo_candidate.sh"
+      - "build/Dockerfile.sudo"
+      - "tests/integration/sudoedit_cve_2023_22809.sh"
+      - "tests/integration/sudo_abi_smoke.sh"
+      - "tests/integration/sudo_yum_upgrade.sh"
+      - "tests/test_repo_preview.py"
+      - "scripts/create_repo_preview.sh"
+      - "scripts/verify_repo_preview.py"
+      - ".github/workflows/sudo-candidate.yml"
+  workflow_dispatch:
+concurrency:
+  group: sudo-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Obtain archived CentOS 6.10 SRPM (candidate only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/sudo
+          curl --fail --location --retry 3 --retry-delay 2 --max-time 120 \
+            'https://vault.centos.org/6.10/updates/Source/SPackages/sudo-1.8.6p3-29.el6_10.3.src.rpm' \
+            -o dist/sudo/sudo-1.8.6p3-29.el6_10.3.src.rpm
+          file dist/sudo/*.src.rpm
+          sha256sum dist/sudo/sudo-1.8.6p3-29.el6_10.3.src.rpm | tee dist/sudo/SOURCE.sha256
+          echo '7fa30b571a1bcb5762dd8754a17001a71080475b7eb7dffc831ea1f2e6bd809d  dist/sudo/sudo-1.8.6p3-29.el6_10.3.src.rpm' | sha256sum --check --status
+      - name: Build in disposable CentOS 6 environment
+        run: |
+          set -euo pipefail
+          docker build --file build/Dockerfile.sudo --tag tree-centos6-lts-sudo-candidate:latest .
+          docker run --rm --cpus 2 --memory 6g --pids-limit 512 \
+            -v "$PWD:/work:ro" -v "$PWD/dist/sudo:/out" \
+            tree-centos6-lts-sudo-candidate:latest bash /work/scripts/build_sudo_candidate.sh
+      - name: Check exported symbols and shared-library dependencies against baseline
+        run: |
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/sudo:/out:ro" \
+            tree-centos6-lts-sudo-candidate:latest bash /tests/sudo_abi_smoke.sh
+      - name: Compare unpatched and patched sudoedit behavior in isolated container
+        run: |
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/sudo:/out:ro" \
+            tree-centos6-lts-sudo-candidate:latest bash /tests/sudoedit_cve_2023_22809.sh
+      - name: Construct UNSIGNED local yum metadata preview (not for publication)
+        run: |
+          set -euo pipefail
+          mkdir -p dist/yum-preview
+          docker run --rm --network none --cpus 2 --memory 512m --pids-limit 128 \
+            --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            --cap-drop ALL --security-opt no-new-privileges \
+            -v "$PWD/scripts:/scripts:ro" -v "$PWD/dist/sudo:/candidate:ro" \
+            -v "$PWD/dist/yum-preview:/preview" \
+            tree-centos6-lts-sudo-candidate:latest \
+            bash /scripts/create_repo_preview.sh /candidate /preview
+          python3 scripts/verify_repo_preview.py dist/yum-preview/6/x86_64
+      - name: Exercise offline yum upgrade with isolated CentOS 6 RPM database
+        run: |
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            --security-opt no-new-privileges \
+            -v "$PWD/tests/integration:/tests:ro" \
+            -v "$PWD/dist/yum-preview:/preview:ro" \
+            tree-centos6-lts-sudo-candidate:latest \
+            bash /tests/sudo_yum_upgrade.sh
+      - name: Save UNTRUSTED preview metadata for review
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: centos6-UNSIGNED-yum-metadata-DO-NOT-PUBLISH
+          path: dist/yum-preview/**
+          retention-days: 3
+      - name: Upload unsigned candidate for review
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: centos6-sudo-UNVERIFIED-do-not-install
+          path: |
+            dist/sudo/*.rpm
+            dist/sudo/SOURCE.sha256
+            dist/sudo/CANDIDATE.sha256
+          retention-days: 3

@@ -1,0 +1,54 @@
+name: CentOS 6 curl CVE-2023-28321 candidate E2E
+on:
+  pull_request:
+    paths:
+      - "packages/curl/**"
+      - "build/Dockerfile.curl"
+      - "scripts/build_curl_candidate.sh"
+      - "tests/integration/curl_wildcard_smoke.sh"
+      - "tests/integration/curl_backend.sh"
+      - ".github/workflows/curl-candidate.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: curl-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download and verify CentOS 6.10 curl SRPM
+        run: |
+          set -euo pipefail
+          mkdir -p dist/curl
+          curl --fail --location --retry 3 --max-time 120 \
+            https://vault.centos.org/6.10/updates/Source/SPackages/curl-7.19.7-54.el6_10.src.rpm \
+            -o dist/curl/curl-7.19.7-54.el6_10.src.rpm
+          echo '02f7ca7f49b284972cad9289efdcfe232c17d31cdd812546a52fd9d429f74f90  dist/curl/curl-7.19.7-54.el6_10.src.rpm' | sha256sum -c -
+      - name: Legacy curl candidate RPM build and negative-positive source regression
+        run: |
+          docker build -f build/Dockerfile.curl -t tree-centos6-curl-candidate:6.10 .
+          docker run --rm --cpus 2 --memory 6g --pids-limit 512 \
+            -v "$PWD:/work:ro" -v "$PWD/dist/curl:/out" \
+            tree-centos6-curl-candidate:6.10 bash /work/scripts/build_curl_candidate.sh
+      - name: Identify actual packaged curl TLS backend
+        run: |
+          docker run --rm --network none --cpus 2 --memory 1g --pids-limit 256 \
+            -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/curl:/out" \
+            tree-centos6-curl-candidate:6.10 bash /tests/curl_backend.sh
+      - name: Retain unsigned candidate only
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: centos6-curl-UNVERIFIED-do-not-install
+          path: |
+            dist/curl/*tree1*.rpm
+            dist/curl/CURL-CANDIDATE.sha256
+            dist/curl/CURL-TLS-BACKEND.txt
+            dist/curl/CURL-LIBCURL-REQUIRES.txt
+          retention-days: 3
