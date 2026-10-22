@@ -47,6 +47,16 @@ The first candidate build and three behavioral assertions passed in [GitHub Acti
 
 **Limitations:** The regression harness does not attempt privilege escalation, exercise the complete upstream test suite or test every combination of sudoers policy and editor. The dynamic-symbol check is an ABI smoke test rather than comprehensive ABI verification. The RPM is unreviewed and unsigned. This advisory remains `pending` and **must not be automatically published**.
 
+## sudo CVE-2021-3156 (Baron Samedit): an actually affected CentOS 6 package
+
+sudo 1.8.2 through 1.8.31p2 is affected, and CentOS 6.10's final `sudo-1.8.6p3-29.el6_10.3` predates the January 2021 fix. `packages/sudo/CVE-2021-3156.patch` backports the [upstream fixes](https://www.sudo.ws/security/advisories/unescape_overflow/) to 1.8.6p3 and is applied after the CVE-2023-22809 candidate in the same `.tree1` build:
+
+- the front-end rejects `-s`/`-i` when invoked as `sudoedit` (`src/parse_args.c`);
+- the sudoers plugin rejects shell flags in edit mode, unescapes `user_args` only in run mode, and never skips past a trailing backslash (`plugins/sudoers/sudoers.c`);
+- the shell-mode command buffer is sized from each argument instead of assuming a flat `argv`.
+
+`tests/integration/sudoedit_cve_2021_3156.sh` runs in a network-less container as an unprivileged user without any sudoers rights. It requires the original RPM to show the vulnerable signature (`sudoedit -s /` is accepted by the parser), records whether the oversized trailing-backslash input crashes it, then requires the candidate to reject `sudoedit -s`, `sudoedit -i` and the overflow input with a usage error, while `sudo -s` / `sudo -i` command output stays byte-identical. The advisory remains `pending`: no independent review, full policy regression or signing has happened.
+
 ## Second SRPM experiment: curl and backend-dependent CVE reachability
 
 - Source: `curl-7.19.7-54.el6_10.src.rpm`, SHA-256 `02f7ca7f49b284972cad9289efdcfe232c17d31cdd812546a52fd9d429f74f90`.
@@ -60,6 +70,7 @@ The first candidate build and three behavioral assertions passed in [GitHub Acti
 | Experiment | Verified result | Remaining release gate |
 | --- | --- | --- |
 | sudo / CVE-2023-22809 | [RPM/SRPM build, exact main-RPM selection, dynamic symbols, DT_NEEDED and sudoedit regression passed](https://github.com/kucats/tree-centos6-lts/actions/runs/39708887148) | Full policy regression, independent review, supply-chain signing |
+| sudo / CVE-2021-3156 | [RPM/SRPM build, ABI smoke, before/after sudoedit -s/-i regression and offline yum upgrade passed](https://github.com/kucats/tree-centos6-lts/actions/runs/39723659150) | Independent review, full policy regression, supply-chain signing |
 | curl / CVE-2023-28321 | [RPM/SRPM build and source-level before/after check passed; NSS/3.44 runtime detected](https://github.com/kucats/tree-centos6-lts/actions/runs/39708887176) | Decide applicability separately for default NSS vs optional OpenSSL builds; full suite and runtime integration |
 
 No signed yum repository, production-ready update, or comprehensive CentOS 6 CVE coverage has been established.

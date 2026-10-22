@@ -1,12 +1,14 @@
-name: CentOS 6 sudo CVE-2023-22809 candidate E2E
+name: CentOS 6 sudo CVE-2023-22809 / CVE-2021-3156 candidate E2E
 on:
   pull_request:
     paths:
       - "packages/sudo/**"
       - "security/advisories/CVE-2023-22809.json"
+      - "security/advisories/CVE-2021-3156.json"
       - "scripts/build_sudo_candidate.sh"
       - "build/Dockerfile.sudo"
       - "tests/integration/sudoedit_cve_2023_22809.sh"
+      - "tests/integration/sudoedit_cve_2021_3156.sh"
       - "tests/integration/sudo_abi_smoke.sh"
       - "tests/integration/sudo_yum_upgrade.sh"
       - "tests/test_repo_preview.py"
@@ -55,6 +57,11 @@ jobs:
           docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
             -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/sudo:/out:ro" \
             tree-centos6-lts-sudo-candidate:latest bash /tests/sudoedit_cve_2023_22809.sh
+      - name: Compare unpatched and patched sudoedit -s/-i (CVE-2021-3156) in isolated container
+        run: |
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/sudo:/out:ro" \
+            tree-centos6-lts-sudo-candidate:latest bash /tests/sudoedit_cve_2021_3156.sh
       - name: Construct UNSIGNED local yum metadata preview (not for publication)
         run: |
           set -euo pipefail
