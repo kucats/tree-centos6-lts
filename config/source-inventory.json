@@ -17,6 +17,14 @@
       "filename": "curl-7.19.7-54.el6_10.src.rpm",
       "url": "https://vault.centos.org/6.10/updates/Source/SPackages/curl-7.19.7-54.el6_10.src.rpm",
       "sha256": "02f7ca7f49b284972cad9289efdcfe232c17d31cdd812546a52fd9d429f74f90"
+    },
+    {
+      "name": "zlib",
+      "version": "1.2.3",
+      "release": "29.el6",
+      "filename": "zlib-1.2.3-29.el6.src.rpm",
+      "url": "https://vault.centos.org/6.10/os/Source/SPackages/zlib-1.2.3-29.el6.src.rpm",
+      "sha256": "ccdc3260d2b1ee35c3d224154878f9f632fa2153ce7908ffaabd10b3e216d26e"
     }
   ]
 }

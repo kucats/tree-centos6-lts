@@ -57,7 +57,7 @@ def validate(inventory, scopes):
         packages[name] = item
         if not isinstance(fn, str) or not FILENAME.fullmatch(fn):
             issues.append("invalid SRPM filename for " + name)
-        if url != "https://vault.centos.org/6.10/updates/Source/SPackages/" + str(fn):
+        if url not in ("https://vault.centos.org/6.10/%s/Source/SPackages/%s" % (repo, fn) for repo in ("updates", "os")):
             issues.append("unrecognized source URL for " + name)
         if not isinstance(item.get("version"), str) or not VERSION.fullmatch(item["version"]):
             issues.append("unsupported package version for " + name)

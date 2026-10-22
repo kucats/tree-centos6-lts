@@ -13,8 +13,9 @@ class SourceTrustTests(unittest.TestCase):
         data = json.loads((ROOT / "config/source-inventory.json").read_text())
         for package in data["packages"]:
             self.assertEqual(len(package["sha256"]), 64)
-            self.assertTrue(package["url"].startswith(
-                "https://vault.centos.org/6.10/updates/Source/SPackages/"))
+            self.assertTrue(package["url"].startswith((
+                "https://vault.centos.org/6.10/updates/Source/SPackages/",
+                "https://vault.centos.org/6.10/os/Source/SPackages/")))
 
     def test_fingerprint_and_air_gapped_rpmdb_required(self):
         script = (ROOT / "scripts/verify_source_signatures.sh").read_text()
