@@ -15,7 +15,7 @@ rpmbuild -bp --nodeps --define "_topdir $top" --define "dist .el6_10" "$spec" >/
     exit 1
 }
 src=$(find "$top/BUILD" -name ssh-agent.c -type f -print -quit)
-makefile=$(find "$top/BUILD" -name Makefile.in -type f -print -quit)
+makefile="$(dirname "$src")/Makefile.in"
 test -n "$src" && test -n "$makefile"
 echo "--- Actually prepared ssh-agent code and link targets ---"
 grep -n 'process_add_smartcard_key(' "$src"
