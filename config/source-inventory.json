@@ -17,6 +17,38 @@
       "filename": "curl-7.19.7-54.el6_10.src.rpm",
       "url": "https://vault.centos.org/6.10/updates/Source/SPackages/curl-7.19.7-54.el6_10.src.rpm",
       "sha256": "02f7ca7f49b284972cad9289efdcfe232c17d31cdd812546a52fd9d429f74f90"
+    },
+    {
+      "name": "zlib",
+      "version": "1.2.3",
+      "release": "29.el6",
+      "filename": "zlib-1.2.3-29.el6.src.rpm",
+      "url": "https://vault.centos.org/6.10/os/Source/SPackages/zlib-1.2.3-29.el6.src.rpm",
+      "sha256": "ccdc3260d2b1ee35c3d224154878f9f632fa2153ce7908ffaabd10b3e216d26e"
+    },
+    {
+      "name": "expat",
+      "version": "2.0.1",
+      "release": "13.el6_8",
+      "filename": "expat-2.0.1-13.el6_8.src.rpm",
+      "url": "https://vault.centos.org/6.10/os/Source/SPackages/expat-2.0.1-13.el6_8.src.rpm",
+      "sha256": "1c09bb9d3eb76d17de44a027bb97381053fb94000567865ecc4569429afb4c57"
+    },
+    {
+      "name": "glibc",
+      "version": "2.12",
+      "release": "1.212.el6_10.3",
+      "filename": "glibc-2.12-1.212.el6_10.3.src.rpm",
+      "url": "https://vault.centos.org/6.10/updates/Source/SPackages/glibc-2.12-1.212.el6_10.3.src.rpm",
+      "sha256": "343720baf52d494b96022005cace30033af4e71031b755df0c3c1dfca9f8824f"
+    },
+    {
+      "name": "openssl",
+      "version": "1.0.1e",
+      "release": "58.el6_10",
+      "filename": "openssl-1.0.1e-58.el6_10.src.rpm",
+      "url": "https://vault.centos.org/6.10/updates/Source/SPackages/openssl-1.0.1e-58.el6_10.src.rpm",
+      "sha256": "1cf309d0d0460525932240d1bd974761af7c351219a8da8b6a6e4105e1eccfcd"
     }
   ]
 }

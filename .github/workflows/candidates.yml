@@ -1,0 +1,89 @@
+name: CentOS 6 package candidates (matrix)
+on:
+  pull_request:
+    paths:
+      - "config/candidates.json"
+      - "packages/**"
+      - "tests/integration/candidates/**"
+      - "scripts/build_candidate.sh"
+      - "build/Dockerfile.candidate"
+      - ".github/workflows/candidates.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: candidates-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.pick.outputs.packages }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: pick
+        name: Select packages touched by this change (all on shared-file changes)
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os, subprocess
+          pkgs = sorted(json.load(open('config/candidates.json'))['packages'])
+          base = os.environ.get('BASE')
+          if base:
+              changed = subprocess.check_output(['git', 'diff', '--name-only', base, 'HEAD'], text=True).split()
+              shared = any(not (f.startswith('packages/') or f.startswith('tests/integration/candidates/')) for f in changed)
+              if not shared:
+                  pkgs = [p for p in pkgs if any(f.startswith(('packages/%s/' % p, 'tests/integration/candidates/%s/' % p)) for f in changed)]
+          print('packages=' + json.dumps(pkgs))
+          PY
+  candidate:
+    needs: plan
+    if: needs.plan.outputs.packages != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.plan.outputs.packages) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Obtain pinned CentOS 6.10 SRPM
+        run: |
+          set -euo pipefail
+          read -r url sha name < <(python3 -c "import json;c=json.load(open('config/candidates.json'))['packages']['${{ matrix.package }}'];print(c['url'],c['sha256'],c['srpm'])")
+          mkdir -p dist/out
+          curl --fail --location --retry 3 --retry-delay 2 --max-time 600 "$url" -o "dist/out/$name"
+          echo "$sha  dist/out/$name" | sha256sum --check
+      - name: Build candidate in disposable CentOS 6 container
+        run: |
+          set -euo pipefail
+          baseline=$(python3 -c "import json;print(' '.join(json.load(open('config/candidates.json'))['packages']['${{ matrix.package }}'].get('baseline_install', [])))")
+          docker build --file build/Dockerfile.candidate --build-arg BASELINE="$baseline" --tag tree-c6-${{ matrix.package }}:ci .
+          docker run --rm --cpus 4 --memory 12g --pids-limit 4096 \
+            -v "$PWD:/work:ro" -v "$PWD/dist/out:/out" \
+            tree-c6-${{ matrix.package }}:ci bash /work/scripts/build_candidate.sh ${{ matrix.package }}
+      - name: Before/after regression tests (no network)
+        run: |
+          set -euo pipefail
+          for t in tests/integration/candidates/${{ matrix.package }}/*.sh; do
+            echo "::group::$t"
+            docker run --rm --network none --cpus 2 --memory 4g --pids-limit 512 \
+              -v "$PWD/tests/integration/candidates/${{ matrix.package }}:/tests:ro" -v "$PWD/dist/out:/out:ro" \
+              tree-c6-${{ matrix.package }}:ci bash "/tests/$(basename "$t")"
+            echo "::endgroup::"
+          done
+      - name: Upload unsigned candidate for review
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: centos6-${{ matrix.package }}-UNVERIFIED-do-not-install
+          path: |
+            dist/out/*.tree1.*.rpm
+            dist/out/CANDIDATE.sha256
+          retention-days: 3

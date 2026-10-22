@@ -23,6 +23,21 @@
       "name": "sudo",
       "priority": "high",
       "repository": "updates"
+    },
+    {
+      "name": "zlib",
+      "priority": "high",
+      "repository": "os"
+    },
+    {
+      "name": "expat",
+      "priority": "high",
+      "repository": "os"
+    },
+    {
+      "name": "glibc",
+      "priority": "critical",
+      "repository": "updates"
     }
   ]
 }
