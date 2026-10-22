@@ -49,6 +49,21 @@ class HistoricalCoverageSafetyTests(unittest.TestCase):
             self.assertEqual(doc['proposed_status'], 'requires_downstream_source_audit')
             self.assertTrue(doc['requires_source_audit'])
 
+    def test_october_2026_openssh_advisories_never_autofix(self):
+        cves = (
+            "CVE-2026-106552", "CVE-2026-106553", "CVE-2026-106555",
+            "CVE-2026-106582", "CVE-2026-106583", "CVE-2026-106584",
+            "CVE-2026-106585", "CVE-2026-106586", "CVE-2026-106587",
+            "CVE-2026-73281",
+        )
+        for cve in cves:
+            doc = json.loads(
+                (ROOT / ("security/advisories/" + cve + ".json")).read_text()
+            )
+            self.assertEqual(doc["status"], "pending")
+            self.assertEqual(doc["package"], "openssh")
+            self.assertTrue(doc["evidence"])
+
     def test_openssh_source_hash_fixed(self):
         data = json.loads((ROOT / "config/source-inventory.json").read_text())
         ssh = [x for x in data["packages"] if x["name"] == "openssh"]
