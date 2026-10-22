@@ -27,5 +27,5 @@ if [[ "$after" != "1.8.6p3-29.el6_10.3.tree1" ]]; then
     echo "FAIL: yum failed to upgrade to the exact candidate: $after" >&2
     exit 1
 fi
-sudo --version | head -1
+sudo -V | head -1
 echo "PASS: offline CentOS 6 yum transaction upgraded $before -> $after"
