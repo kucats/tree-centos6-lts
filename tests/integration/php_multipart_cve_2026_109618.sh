@@ -26,11 +26,13 @@ run() {  # body-file
   REDIRECT_STATUS=1 REQUEST_METHOD=POST SCRIPT_FILENAME=/tmp/form.php \
   CONTENT_TYPE='multipart/form-data; boundary=B' CONTENT_LENGTH=$(stat -c %s "$1") \
   php-cgi -n -d max_input_vars=1000 -d max_file_uploads=20 -d display_errors=1 \
-    -d error_reporting=-1 -d log_errors=0 -d upload_tmp_dir=/tmp < "$1" 2>&1
+    -d error_reporting=-1 -d display_startup_errors=1 -d log_errors=1 -d error_log=/tmp/php-errors.log \
+    -d upload_tmp_dir=/tmp < "$1" 2>&1
 }
 php -v > /tmp/before-version.txt 2>&1; head -1 /tmp/before-version.txt
 run /tmp/small.body > /tmp/before-small.out
-run /tmp/many.body > /tmp/before-many.out
+rm -f /tmp/php-errors.log; run /tmp/many.body > /tmp/before-many.out
+cat /tmp/php-errors.log >> /tmp/before-many.out 2>/dev/null || true
 if grep -q 'Multipart body parts limit exceeded' /tmp/before-many.out; then
   echo 'Baseline already limits multipart parts; cannot validate the fix.' >&2; exit 1
 fi
@@ -43,7 +45,8 @@ cat /tmp/after-version.txt
 rpm -q php-cli php-common > /tmp/after-rpm.txt; cat /tmp/after-rpm.txt
 [[ $(grep -c tree1 /tmp/after-rpm.txt) -eq 2 ]]
 run /tmp/small.body > /tmp/after-small.out
-run /tmp/many.body > /tmp/after-many.out
+rm -f /tmp/php-errors.log; run /tmp/many.body > /tmp/after-many.out
+cat /tmp/php-errors.log >> /tmp/after-many.out 2>/dev/null || true
 if ! grep -q 'Multipart body parts limit exceeded' /tmp/after-many.out; then
   echo 'FAIL: candidate did not enforce the multipart part limit' >&2; head -c 2000 /tmp/after-many.out >&2; exit 1
 fi
