@@ -47,6 +47,23 @@ The first candidate build and three behavioral assertions passed in [GitHub Acti
 
 **Limitations:** The regression harness does not attempt privilege escalation, exercise the complete upstream test suite or test every combination of sudoers policy and editor. The dynamic-symbol check is an ABI smoke test rather than comprehensive ABI verification. The RPM is unreviewed and unsigned. This advisory remains `pending` and **must not be automatically published**.
 
+## Second SRPM experiment: curl and backend-dependent CVE reachability
+
+- Source: `curl-7.19.7-54.el6_10.src.rpm`, SHA-256 `02f7ca7f49b284972cad9289efdcfe232c17d31cdd812546a52fd9d429f74f90`.
+- Candidate: `packages/curl/CVE-2023-28321.patch`. The historical OpenSSL hostname-checking helper accepts unsafe partial and multi-level wildcard matches before this candidate patch; both are rejected afterward in the isolated C regression.
+- [Successful CI run](https://github.com/kucats/tree-centos6-lts/actions/runs/39708887176) generated curl/libcurl RPMs and a source RPM, then installed the candidate in a disposable offline CentOS 6 environment. The actual binary reported **NSS/3.44**.
+- curl's upstream [CVE-2023-28321 advisory](https://curl.se/docs/CVE-2023-28321.html) states that its private vulnerable name matcher is used with OpenSSL, Schannel and Gskit, **not NSS**. Consequently the presence of affected upstream source does not establish that the **default CentOS 6 NSS build** is vulnerable. A custom build using another TLS backend needs separate analysis.
+- This experiment is a useful *applicability triage* example, not a security-update release. The candidate's legacy `%check` section is short-circuited in research CI to avoid running an unbounded historical suite, and full integration/ABI tests plus independent human review have **not** passed. The CVE stays `pending` with a provisional `not_affected_on_default_nss_binary` assessment. **Do not install research RPMs in production.**
+
+### CI evidence so far
+
+| Experiment | Verified result | Remaining release gate |
+| --- | --- | --- |
+| sudo / CVE-2023-22809 | [RPM/SRPM build, exact main-RPM selection, dynamic symbols, DT_NEEDED and sudoedit regression passed](https://github.com/kucats/tree-centos6-lts/actions/runs/39708887148) | Full policy regression, independent review, supply-chain signing |
+| curl / CVE-2023-28321 | [RPM/SRPM build and source-level before/after check passed; NSS/3.44 runtime detected](https://github.com/kucats/tree-centos6-lts/actions/runs/39708887176) | Decide applicability separately for default NSS vs optional OpenSSL builds; full suite and runtime integration |
+
+No signed yum repository, production-ready update, or comprehensive CentOS 6 CVE coverage has been established.
+
 ## CVE decision contract
 
 One JSON file per CVE in security/advisories/CVE-YYYY-NNNN.json. Required keys include cve, package, status, and evidence (nonempty array of authoritative URLs). Status-specific fields are enforced by the validator:
