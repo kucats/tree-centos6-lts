@@ -126,6 +126,7 @@ def download_sources(inventory, out, allow_unpinned=False):
             if item["sha256"] is not None and sha != item["sha256"]:
                 raise ValueError(item["name"] + ": SHA-256 mismatch")
             Path(temp_name).replace(target)
+            target.chmod(0o644)  # Research container runs under remapped UID; read-only input.
             print(sha + "  " + item["filename"], flush=True)
         finally:
             Path(temp_name).unlink(missing_ok=True)
