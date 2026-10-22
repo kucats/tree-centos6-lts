@@ -1,0 +1,36 @@
+name: CentOS 6 source RPM GPG provenance
+on:
+  pull_request:
+    paths:
+      - "config/source-inventory.json"
+      - "scripts/verify_scope.py"
+      - "scripts/verify_source_signatures.sh"
+      - ".github/workflows/source-signatures.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: source-signatures-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Download and pin-check official archived SRPMs
+        run: |
+          python3 scripts/verify_scope.py validate
+          python3 scripts/verify_scope.py fetch
+      - name: Verify official CentOS 6 key and source RPM signatures
+        run: bash scripts/verify_source_signatures.sh dist/sources dist/provenance
+      - name: Preserve short-lived trust evidence (not a signed security release)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: centos6-source-signature-verification-evidence
+          path: dist/provenance/*
+          if-no-files-found: ignore
+          retention-days: 7
