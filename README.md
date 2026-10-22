@@ -75,6 +75,21 @@ sudo 1.8.2 through 1.8.31p2 is affected, and CentOS 6.10's final `sudo-1.8.6p3-2
 
 No signed yum repository, production-ready update, or comprehensive CentOS 6 CVE coverage has been established.
 
+## Experimental CVE-2023-38408 mitigation: disable legacy agent PKCS#11 protocol
+
+**Research preview only — not a reviewed security release.** A CentOS 6.10 `openssh-5.3p1-124.el6_10` backport candidate prevents `ssh-agent` from servicing protocol requests to add or remove PKCS#11 smartcard providers (types 20, 21, 26). Unlike the OpenSSH 9.3p2 fix, this does **not** attempt to distinguish local from remotely forwarded agent sockets: the old 5.3p1 protocol cannot reliably make that determination. It instead disables those operations for **all clients**, including legitimate local smartcard users.
+
+The modification is deliberately limited to two dispatch call sites in [`packages/openssh/CVE-2023-38408-deny-pkcs11.patch`](packages/openssh/CVE-2023-38408-deny-pkcs11.patch). The original functions are no longer called from the request dispatcher. The patch does **not** remove unrelated NSS agent protocols and must not be treated as protection against unrelated provider-loading bugs.
+
+[Full passing CentOS 6 research E2E](https://github.com/kucats/tree-centos6-lts/actions/runs/39862878640) verifies original CentOS source GPG signature and pinned SHA-256, applies the vendor patch stack and mitigation, generates source and binary RPMs, and executes the exact packaged candidate binaries with network access disabled:
+
+- Ordinary test RSA identity add/list and an SSH2 RSA signing response succeed.
+- PKCS#11 add, remove and constrained-add requests all receive `SSH_AGENT_FAILURE` without parsing provider paths or loading modules.
+- The candidate `ssh-agent` ELF `DT_NEEDED` list matches the CentOS base executable.
+- Full upstream/OpenSSH integration, FIPS mode, PKCS#11 users' migration path, independent code review, production signing and yum publication are **not validated**.
+
+The entire release remains `pending`/`blocked`. This is a reversible functionality trade-off and **not** an upstream-equivalent remote-only fix. Do not install unsigned GitHub Actions artifacts in production.
+
 ## October 2026 historical CVE applicability audit
 
 The existing candidate sudo `.tree1` RPM includes pending patches for CVE-2021-3156 and CVE-2023-22809; this does **not** establish complete sudo security coverage or production readiness.
