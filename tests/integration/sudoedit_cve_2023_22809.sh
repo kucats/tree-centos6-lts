@@ -16,7 +16,7 @@ if ! run_case > /tmp/before.out 2>&1; then
   cat /tmp/before.out >&2
   exit 1
 fi
-CANDIDATE=$(find /out -maxdepth 1 -type f -name 'sudo-*.x86_64.rpm' -print -quit)
+CANDIDATE=$(find /out -maxdepth 1 -type f -name 'sudo-[0-9]*.x86_64.rpm' -print -quit)
 test -n "$CANDIDATE"
 rpm -Uvh --force --nodeps "$CANDIDATE"
 # The patched candidate must reject the same inputs, not silently fall back.
