@@ -61,8 +61,10 @@ run_edi() { local rc=0; /tmp/gn edi > /tmp/edi.out 2>&1 || rc=$?; echo "$rc"; }
 build
 rc=$(run_edi); echo "baseline edi rc=$rc $(cat /tmp/edi.out)"
 [[ $rc -ge 128 ]] || { echo 'Baseline EDIPARTYNAME compare did not crash; cannot validate CVE-2020-1971.' >&2; exit 1; }
-/tmp/gn x400 | tee /tmp/x400-before.out
-grep -q 'x400_diff=0' /tmp/x400-before.out || { echo 'Baseline did not show the X.400 type confusion.' >&2; exit 1; }
+rc=0; /tmp/gn x400 > /tmp/x400-before.out 2>&1 || rc=$?
+echo "baseline x400 rc=$rc $(cat /tmp/x400-before.out)"
+# The type confusion shows either as a crash or as two different names comparing equal.
+[[ $rc -ge 128 ]] || grep -q 'x400_diff=0' /tmp/x400-before.out || { echo 'Baseline did not show the X.400 type confusion.' >&2; exit 1; }
 /tmp/sqrt | tee /tmp/sqrt-before.out
 grep -q 'hangs=0 ' /tmp/sqrt-before.out && { echo 'Baseline BN_mod_sqrt never hung; cannot validate CVE-2022-0778.' >&2; exit 1; }
 /tmp/gn dns > /tmp/dns-before.out
