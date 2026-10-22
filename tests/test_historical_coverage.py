@@ -39,6 +39,16 @@ class HistoricalCoverageSafetyTests(unittest.TestCase):
             self.assertEqual(advisory["status"], "pending")
             self.assertTrue(advisory["evidence"])
 
+    def test_recent_openssh_cves_remain_untriaged_without_runtime_evidence(self):
+        for cve in ('CVE-2026-59995', 'CVE-2026-59999', 'CVE-2026-73282'):
+            doc = json.loads(
+                (ROOT / ('security/advisories/' + cve + '.json')).read_text()
+            )
+            self.assertEqual(doc['package'], 'openssh')
+            self.assertEqual(doc['status'], 'pending')
+            self.assertEqual(doc['proposed_status'], 'requires_downstream_source_audit')
+            self.assertTrue(doc['requires_source_audit'])
+
     def test_openssh_source_hash_fixed(self):
         data = json.loads((ROOT / "config/source-inventory.json").read_text())
         ssh = [x for x in data["packages"] if x["name"] == "openssh"]
