@@ -3,8 +3,8 @@
 # Inspect the *actual packaged curl* TLS backend. Source presence != reachable code.
 set -euo pipefail
 
-main_rpm=$(find /out -maxdepth 1 -type f -name 'curl-*.x86_64.rpm' -print -quit)
-lib_rpm=$(find /out -maxdepth 1 -type f -name 'libcurl-*.x86_64.rpm' -print -quit)
+main_rpm=$(find /out -maxdepth 1 -type f -name 'curl-[0-9]*.x86_64.rpm' -print -quit)
+lib_rpm=$(find /out -maxdepth 1 -type f -name 'libcurl-[0-9]*.x86_64.rpm' -print -quit)
 test -s "$main_rpm" && test -s "$lib_rpm"
 
 rpm -qp --requires "$lib_rpm" > /out/CURL-LIBCURL-REQUIRES.txt
