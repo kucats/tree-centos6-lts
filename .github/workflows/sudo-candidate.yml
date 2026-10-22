@@ -10,6 +10,9 @@ on:
       - "tests/integration/sudo_abi_smoke.sh"
       - ".github/workflows/sudo-candidate.yml"
   workflow_dispatch:
+concurrency:
+  group: sudo-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
