@@ -5,11 +5,16 @@ set -euo pipefail
 candidate=$(find /out -maxdepth 1 -name 'openssh-clients-[0-9]*.x86_64.rpm' -type f -print -quit)
 test -s "$candidate"
 rpm -qp --qf '%{NAME}\n' "$candidate" | grep -qx openssh-clients
-rpm -Uvh --force --nodeps "$candidate"
-test -x /usr/bin/ssh-agent && test -x /usr/bin/ssh-add
+# Extract, do not install RPM inside the runtime sandbox: rpm file conflicts
+# and immutable-hmac attributes are unrelated to the agent protocol regression.
 temp=$(mktemp -d)
 trap 'if test -f "$temp/agentpid"; then kill "$(cat "$temp/agentpid")" 2>/dev/null || true; fi; rm -rf "$temp"' EXIT
 chmod 0700 "$temp"
+mkdir -p "$temp/package"
+(cd "$temp/package" && rpm2cpio "$candidate" | cpio -idmu --quiet)
+test -x "$temp/package/usr/bin/ssh-agent" && test -x "$temp/package/usr/bin/ssh-add"
+export PATH="$temp/package/usr/bin:$PATH"
+echo 'PASS: running exact candidate RPM payload binaries in isolated filesystem'
 # Use explicit test key and isolated Unix socket, never a production key.
 ssh-keygen -q -t rsa -b 2048 -N '' -f "$temp/id_rsa"
 eval "$(ssh-agent -s -a "$temp/agent.sock")"
