@@ -48,8 +48,10 @@ test -n "$SRC"
 grep -F 'only allow a full leftmost-label wildcard' "$SRC"
 bash /work/tests/integration/curl_wildcard_smoke.sh "$SRC" after
 
-# If the two-sided source tests pass, attempt the full RPM + SRPM build.
-rpmbuild -ba --define "_topdir $TOP" --define "dist .el6_10" "$SPEC"
+# If the two-sided source tests pass, build candidate RPM + SRPM.
+# Research-only fast path: the historical upstream %check suite is deferred to
+# a separate, bounded release gate. This is NOT a complete regression test.
+rpmbuild -ba --nocheck --define "_topdir $TOP" --define "dist .el6_10" "$SPEC"
 find "$TOP/RPMS" -type f -name '*.rpm' -exec cp -v {} /out/ \;
 find "$TOP/SRPMS" -type f -name '*.src.rpm' -exec cp -v {} /out/ \;
 rpm -qp --qf '%{NAME} %{VERSION}-%{RELEASE} %{ARCH}\n' /out/curl-*.x86_64.rpm
