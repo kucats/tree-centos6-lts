@@ -15,6 +15,12 @@ mkdir -p "$temp/package"
 test -x "$temp/package/usr/bin/ssh-agent" && test -x "$temp/package/usr/bin/ssh-add"
 export PATH="$temp/package/usr/bin:$PATH"
 echo 'PASS: running exact candidate RPM payload binaries in isolated filesystem'
+# Full ELF ABI review is separate. The dependency list must not regress.
+readelf -d /usr/bin/ssh-agent | sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p' | sort > "$temp/baseline-libs"
+readelf -d "$temp/package/usr/bin/ssh-agent" | sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p' | sort > "$temp/candidate-libs"
+test -s "$temp/baseline-libs" && test -s "$temp/candidate-libs"
+diff -u "$temp/baseline-libs" "$temp/candidate-libs"
+echo 'PASS: ssh-agent ELF DT_NEEDED dependencies unchanged'
 # Use explicit test key and isolated Unix socket, never a production key.
 ssh-keygen -q -t rsa -b 2048 -N '' -f "$temp/id_rsa"
 eval "$(ssh-agent -s -a "$temp/agent.sock")"
@@ -29,6 +35,41 @@ echo 'PASS: ordinary RSA key add/list works'
 python - "$SSH_AUTH_SOCK" <<'PY'
 import socket, struct, sys
 sockpath = sys.argv[1]
+# Confirm the agent still performs an actual SSH2 signature using the test key.
+# No server, network or privileged target is involved.
+import base64, subprocess
+p = subprocess.Popen(["ssh-add", "-L"], stdout=subprocess.PIPE,
+                     stderr=subprocess.PIPE)
+output, errors = p.communicate()
+assert p.returncode == 0, errors
+line = output.strip().splitlines()[0].split()
+assert line[0] == "ssh-rsa", line[0]
+public_blob = base64.b64decode(line[1])
+def string(value):
+    return struct.pack(">I", len(value)) + value
+probe = "centos6-ssh-agent-benign-test"
+sign_payload = chr(13) + string(public_blob) + string(probe) + struct.pack(">I", 0)
+client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+client.settimeout(5)
+client.connect(sockpath)
+client.sendall(struct.pack(">I", len(sign_payload)) + sign_payload)
+def read_exact(sock, count):
+    result = ''
+    while len(result) < count:
+        chunk = sock.recv(count - len(result))
+        if not chunk:
+            raise AssertionError("unexpected socket EOF")
+        result += chunk
+    return result
+size = struct.unpack(">I", read_exact(client, 4))[0]
+assert 1 < size < 8192, size
+reply = read_exact(client, size)
+assert ord(reply[0]) == 14, ord(reply[0])  # SSH2_AGENT_SIGN_RESPONSE
+siglen = struct.unpack(">I", reply[1:5])[0]
+assert siglen >= 16 and siglen == len(reply) - 5, siglen
+client.close()
+print("PASS: normal SSH2 agent RSA signature response retained")
+
 for typ in (20, 21, 26):
     client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     client.settimeout(5)
