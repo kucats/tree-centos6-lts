@@ -41,8 +41,8 @@ text = text[:end] + '%patch7998 -p1\n\n' + text[end:]
 # CentOS 6 rpm 4.8 lacks rpmbuild --nocheck. Preserve all RPM spec
 # sections but short-circuit the historical %check script for research CI.
 # The release gate must run the complete test suite separately.
-text, n_checks = re.subn(r'(?m)^(%check[ \\t]*\\n)',
-                         r'\\1exit 0 # candidate-only: full checks deferred\\n',
+text, n_checks = re.subn(r'(?m)^(%check[ \t]*\n)',
+                         r'\1exit 0 # candidate-only: full checks deferred\n',
                          text, count=1)
 print('Historical package check section bypassed:', n_checks)
 with open(path, 'w') as f:
