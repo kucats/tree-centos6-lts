@@ -30,6 +30,23 @@ To exercise the legacy RPM toolchain on Linux with Docker:
 
 The smoke test compiles a trivial noarch RPM only; it does **not** build, patch, or validate a vulnerable package. This container is an obsolete OS and not a trustworthy security boundary. Build it on disposable runners without privileged access or credentials.
 
+## First real SRPM backport experiment: sudo
+
+CVE-2023-22809 was published after CentOS 6 reached end-of-life. A candidate patch for the old `sudo-1.8.6p3-29.el6_10.3` source RPM is stored at `packages/sudo/CVE-2023-22809.patch`. It was adapted from the upstream fix: https://github.com/sudo-project/sudo/commit/0274a4f3b403162a37a10f199c989f3727ed3ad4
+
+The `CentOS 6 sudo CVE-2023-22809 candidate E2E` GitHub Actions workflow:
+
+1. Downloads the actual source RPM from CentOS Vault and verifies its observed SHA-256 (`7fa30b571a1bcb5762dd8754a17001a71080475b7eb7dffc831ea1f2e6bd809d`).
+2. Uses a disposable CentOS 6.10 builder to inject the patch into the original spec, applies all preexisting downstream patches, and builds candidate x86_64 RPM and source RPM with a release suffix `.tree1`.
+3. Checks the candidate RPM's version ordering against the archived base package.
+4. Compares exported dynamic symbols and DT_NEEDED entries of the original and candidate sudo binaries and sudoers plugin.
+5. Runs a safe regression harness in a network-isolated container: the original RPM accepts an injected editor-argument separator; the patched RPM rejects it; regular editor usage still works.
+6. Retains unsigned, untrusted candidate artifacts for only three days, with recorded hashes.
+
+The first candidate build and three behavioral assertions passed in [GitHub Actions run #3](https://github.com/kucats/tree-centos6-lts/actions/runs/39702709677). Later checks (including the ABI check and SHA pin) must be independently evaluated; a previous run's success is **not** evidence for later additions.
+
+**Limitations:** The regression harness does not attempt privilege escalation, exercise the complete upstream test suite or test every combination of sudoers policy and editor. The dynamic-symbol check is an ABI smoke test rather than comprehensive ABI verification. The RPM is unreviewed and unsigned. This advisory remains `pending` and **must not be automatically published**.
+
 ## CVE decision contract
 
 One JSON file per CVE in security/advisories/CVE-YYYY-NNNN.json. Required keys include cve, package, status, and evidence (nonempty array of authoritative URLs). Status-specific fields are enforced by the validator:
