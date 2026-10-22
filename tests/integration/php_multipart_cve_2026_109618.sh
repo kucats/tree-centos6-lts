@@ -28,7 +28,7 @@ run() {  # body-file
   php-cgi -n -d max_input_vars=1000 -d max_file_uploads=20 -d display_errors=1 \
     -d error_reporting=-1 -d log_errors=0 -d upload_tmp_dir=/tmp < "$1" 2>&1
 }
-php -v | head -1
+php -v > /tmp/before-version.txt 2>&1; head -1 /tmp/before-version.txt
 run /tmp/small.body > /tmp/before-small.out
 run /tmp/many.body > /tmp/before-many.out
 if grep -q 'Multipart body parts limit exceeded' /tmp/before-many.out; then
@@ -37,11 +37,17 @@ fi
 echo "baseline 5000-part body: $(grep -o 'post=[0-9]*' /tmp/before-many.out)"
 
 rpm -Uvh --force --nodeps $(ls /out/php-common-5.3.3-*.tree1.x86_64.rpm /out/php-cli-5.3.3-*.tree1.x86_64.rpm)
-php -v | head -1 | grep -q '5.3.3'
-rpm -q php-cli | grep -q tree1
+rc=0; php -v > /tmp/after-version.txt 2>&1 || rc=$?
+cat /tmp/after-version.txt
+[[ $rc -eq 0 ]] && grep -q '^PHP 5.3.3' /tmp/after-version.txt
+rpm -q php-cli php-common > /tmp/after-rpm.txt; cat /tmp/after-rpm.txt
+[[ $(grep -c tree1 /tmp/after-rpm.txt) -eq 2 ]]
 run /tmp/small.body > /tmp/after-small.out
 run /tmp/many.body > /tmp/after-many.out
-grep 'Multipart body parts limit exceeded' /tmp/after-many.out | head -1
+if ! grep -q 'Multipart body parts limit exceeded' /tmp/after-many.out; then
+  echo 'FAIL: candidate did not enforce the multipart part limit' >&2; head -c 2000 /tmp/after-many.out >&2; exit 1
+fi
+grep -m1 'Multipart body parts limit exceeded' /tmp/after-many.out
 # Ordinary forms and uploads are unchanged.
 diff -u <(grep -E '^(post|file)=' /tmp/before-small.out) <(grep -E '^(post|file)=' /tmp/after-small.out)
 grep -q '^post=3$' /tmp/after-small.out
