@@ -49,4 +49,4 @@ new = ('0', '1.8.6p3', '29.el6_10.3.tree1')
 assert rpm.labelCompare(new, old) > 0, 'Candidate is not an RPM upgrade'
 print('PASS: candidate RPM release is newer than CentOS 6.10 baseline')
 PY
-sha256sum /out/*tree1*.rpm > /out/CANDIDATE.sha256
+(cd /out && sha256sum *tree1*.rpm > CANDIDATE.sha256)
