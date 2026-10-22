@@ -81,11 +81,12 @@ No signed yum repository, production-ready update, or comprehensive CentOS 6 CVE
 
 The modification is deliberately limited to two dispatch call sites in [`packages/openssh/CVE-2023-38408-deny-pkcs11.patch`](packages/openssh/CVE-2023-38408-deny-pkcs11.patch). The original functions are no longer called from the request dispatcher. The patch does **not** remove unrelated NSS agent protocols and must not be treated as protection against unrelated provider-loading bugs.
 
-[Full passing CentOS 6 research E2E](https://github.com/kucats/tree-centos6-lts/actions/runs/39862878640) verifies original CentOS source GPG signature and pinned SHA-256, applies the vendor patch stack and mitigation, generates source and binary RPMs, and executes the exact packaged candidate binaries with network access disabled:
+[Passing CentOS 6 research E2E, including actual offline yum RPM upgrades](https://github.com/kucats/tree-centos6-lts/actions/runs/39863991020) verifies original CentOS source GPG signature and pinned SHA-256, applies the vendor patch stack and mitigation, generates source and binary RPMs, and executes the exact packaged candidate binaries with network access disabled:
 
 - Ordinary test RSA identity add/list and an SSH2 RSA signing response succeed.
 - PKCS#11 add, remove and constrained-add requests all receive `SSH_AGENT_FAILURE` without parsing provider paths or loading modules.
 - The candidate `ssh-agent` ELF `DT_NEEDED` list matches the CentOS base executable.
+- A networkless, disposable CentOS 6 container performs a real **unsigned test-only** local `yum update openssh openssh-clients`, upgrading both packages from `5.3p1-124.el6_10` to `5.3p1-124.el6_10.tree1`. The temporary local repository explicitly disables GPG enforcement ONLY for this test. It must not be copied into production.
 - Full upstream/OpenSSH integration, FIPS mode, PKCS#11 users' migration path, independent code review, production signing and yum publication are **not validated**.
 
 The entire release remains `pending`/`blocked`. This is a reversible functionality trade-off and **not** an upstream-equivalent remote-only fix. Do not install unsigned GitHub Actions artifacts in production.
