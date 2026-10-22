@@ -6,6 +6,7 @@ on:
       - "build/Dockerfile.curl"
       - "scripts/build_curl_candidate.sh"
       - "tests/integration/curl_wildcard_smoke.sh"
+      - "tests/integration/curl_backend.sh"
       - ".github/workflows/curl-candidate.yml"
   workflow_dispatch:
 permissions:
@@ -35,6 +36,11 @@ jobs:
           docker run --rm --cpus 2 --memory 6g --pids-limit 512 \
             -v "$PWD:/work:ro" -v "$PWD/dist/curl:/out" \
             tree-centos6-curl-candidate:6.10 bash /work/scripts/build_curl_candidate.sh
+      - name: Identify actual packaged curl TLS backend
+        run: |
+          docker run --rm --network none --cpus 2 --memory 1g --pids-limit 256 \
+            -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/curl:/out" \
+            tree-centos6-curl-candidate:6.10 bash /tests/curl_backend.sh
       - name: Retain unsigned candidate only
         if: success()
         uses: actions/upload-artifact@v4
@@ -43,4 +49,6 @@ jobs:
           path: |
             dist/curl/*tree1*.rpm
             dist/curl/CURL-CANDIDATE.sha256
+            dist/curl/CURL-TLS-BACKEND.txt
+            dist/curl/CURL-LIBCURL-REQUIRES.txt
           retention-days: 3
