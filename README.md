@@ -75,6 +75,21 @@ sudo 1.8.2 through 1.8.31p2 is affected, and CentOS 6.10's final `sudo-1.8.6p3-2
 
 No signed yum repository, production-ready update, or comprehensive CentOS 6 CVE coverage has been established.
 
+## Signed yum repository
+
+`.github/workflows/yum-repo.yml` turns the sudo build into a yum repository:
+
+- RPMs are signed with `rpm --addsign` (RSA, SHA-256) inside CentOS 6, so CentOS 6's own rpm and yum verify them; `repomd.xml` gets a detached signature; `updateinfo.xml` carries the security errata from `config/release.json`.
+- Every pull request signs with a throwaway key and runs `tests/integration/signed_yum_update.sh` in a network-less CentOS 6 container: tampered `repomd.xml` and unsigned RPMs must be refused, `yum --security check-update` must list the update, and `yum update sudo` must succeed with `gpgcheck=1` and `repo_gpgcheck=1`.
+- Publishing is `workflow_dispatch` with `publish=true` on `main` only. It runs `scripts/release_gate.py` (every advisory in the update must be a reviewed `fixed` record and the signing-key fingerprint must be pinned), then waits for approval of the `production` environment, which alone holds the `TREE_SIGNING_KEY` secret. It re-runs the yum test on the exact output and deploys to GitHub Pages.
+
+To use the repository on CentOS 6 once published:
+
+```
+curl -o /etc/yum.repos.d/tree-centos6-lts.repo https://kucats.github.io/tree-centos6-lts/tree-centos6-lts.repo
+yum update sudo
+```
+
 ## CVE decision contract
 
 One JSON file per CVE in security/advisories/CVE-YYYY-NNNN.json. Required keys include cve, package, status, and evidence (nonempty array of authoritative URLs). Status-specific fields are enforced by the validator:
@@ -84,7 +99,7 @@ One JSON file per CVE in security/advisories/CVE-YYYY-NNNN.json. Required keys i
 - mitigated: rationale, mitigation
 - pending / blocked: rationale
 
-A fixed claim must include a patch under patches/ whose SHA-256 matches the advisory, tests with evidence links, and a reviewer identity. The validator checks bookkeeping and bytes, **not semantic correctness**. A passing CI check does not prove a security fix.
+A fixed claim must include a patch under packages/<package>/ whose SHA-256 matches the advisory, tests with evidence links, and a reviewer identity. The validator checks bookkeeping and bytes, **not semantic correctness**. A passing CI check does not prove a security fix.
 
 Before any release: establish SRPM provenance and pinned hashes, reproduce the vulnerability against the unpatched build, verify correction in the patched build, run ABI and application regression tests, get human review, and sign artifacts in a separately controlled release process.
 

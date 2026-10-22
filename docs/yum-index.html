@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tree CentOS 6 LTS</title>
+<style>body{font:16px/1.5 system-ui,sans-serif;max-width:46rem;margin:2rem auto;padding:0 1rem}pre{background:#f4f4f4;padding:1rem;overflow-x:auto}</style>
+<h1>tree CentOS 6 LTS security updates</h1>
+<p>Community backports of security fixes for the final CentOS 6.10 packages. Packages and repository metadata are GPG-signed. Source and test evidence: <a href="https://github.com/kucats/tree-centos6-lts">github.com/kucats/tree-centos6-lts</a>.</p>
+<pre>curl -o /etc/yum.repos.d/tree-centos6-lts.repo https://kucats.github.io/tree-centos6-lts/tree-centos6-lts.repo
+yum --security check-update
+yum update sudo</pre>
+<p>No warranty. Coverage is limited to the packages listed in the repository's <code>config/release.json</code>; CentOS 6 remains end-of-life.</p>
+</html>

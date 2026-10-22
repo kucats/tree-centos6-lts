@@ -1,0 +1,160 @@
+name: Signed CentOS 6 yum repository
+on:
+  pull_request:
+    paths:
+      - "config/release.json"
+      - "packages/sudo/**"
+      - "security/advisories/**"
+      - "build/Dockerfile.repo"
+      - "build/Dockerfile.sudo"
+      - "scripts/build_sudo_candidate.sh"
+      - "scripts/build_signed_repo.sh"
+      - "scripts/rpm_addsign.exp"
+      - "scripts/make_updateinfo.py"
+      - "scripts/release_gate.py"
+      - "tests/integration/signed_yum_update.sh"
+      - ".github/workflows/yum-repo.yml"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Sign with the production key and deploy to GitHub Pages (main only, needs approval)"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: yum-repo-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Obtain pinned CentOS 6.10 sudo SRPM
+        run: |
+          set -euo pipefail
+          mkdir -p dist/sudo
+          curl --fail --location --retry 3 --retry-delay 2 --max-time 120 \
+            'https://vault.centos.org/6.10/updates/Source/SPackages/sudo-1.8.6p3-29.el6_10.3.src.rpm' \
+            -o dist/sudo/sudo-1.8.6p3-29.el6_10.3.src.rpm
+          echo '7fa30b571a1bcb5762dd8754a17001a71080475b7eb7dffc831ea1f2e6bd809d  dist/sudo/sudo-1.8.6p3-29.el6_10.3.src.rpm' | sha256sum --check
+      - name: Build sudo update RPMs in disposable CentOS 6 container
+        run: |
+          docker build --file build/Dockerfile.sudo --tag tree-centos6-sudo:build .
+          docker run --rm --cpus 2 --memory 6g --pids-limit 512 \
+            -v "$PWD:/work:ro" -v "$PWD/dist/sudo:/out" \
+            tree-centos6-sudo:build bash /work/scripts/build_sudo_candidate.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sudo-unsigned-build
+          path: dist/sudo/*.x86_64.rpm
+          retention-days: 1
+
+  signed-preview:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: sudo-unsigned-build
+          path: dist/candidate
+      - name: Generate a throwaway CI signing key (never leaves this job)
+        id: key
+        run: |
+          set -euo pipefail
+          export GNUPGHOME=$(mktemp -d)
+          gpg --batch --passphrase '' --quick-gen-key 'tree-centos6-lts CI throwaway <ci@invalid>' rsa3072 sign 1d
+          fpr=$(gpg --batch --with-colons --list-secret-keys | awk -F: '/^fpr:/ {print $10; exit}')
+          mkdir -p "$RUNNER_TEMP/keys"
+          gpg --batch --pinentry-mode loopback --passphrase '' --armor --export-secret-keys "$fpr" > "$RUNNER_TEMP/keys/secret.asc"
+          echo "fpr=$fpr" >> "$GITHUB_OUTPUT"
+      - name: Build signed repository with the throwaway key
+        run: |
+          set -euo pipefail
+          mkdir -p dist/meta dist/repo
+          python3 scripts/make_updateinfo.py dist/meta/updateinfo.xml
+          cp config/release.json dist/meta/release.json
+          docker build --file build/Dockerfile.repo --tag tree-centos6-repo:ci .
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            -e KEY_FPR='${{ steps.key.outputs.fpr }}' -e OUT_UID="$(id -u)" -e OUT_GID="$(id -g)" \
+            -v "$PWD:/work:ro" -v "$PWD/dist/candidate:/candidate:ro" -v "$PWD/dist/meta:/meta:ro" \
+            -v "$RUNNER_TEMP/keys:/keys:ro" -v "$PWD/dist/repo:/repo" \
+            tree-centos6-repo:ci bash /work/scripts/build_signed_repo.sh
+          rm -rf "$RUNNER_TEMP/keys"
+      - name: CentOS 6 yum consumes the signed repository; rejects tampering and unsigned RPMs
+        run: |
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/repo:/repo:ro" \
+            -v "$PWD/dist/candidate:/candidate:ro" \
+            tree-centos6-repo:ci bash /tests/signed_yum_update.sh
+
+  gate:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Require reviewed fixed advisories and a pinned signing key
+        run: python3 scripts/release_gate.py
+
+  publish:
+    needs: [build, signed-preview, gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: sudo-unsigned-build
+          path: dist/candidate
+      - name: Sign with the production key and build the repository
+        env:
+          TREE_SIGNING_KEY: ${{ secrets.TREE_SIGNING_KEY }}
+          TREE_SIGNING_PASSPHRASE: ${{ secrets.TREE_SIGNING_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          test -n "$TREE_SIGNING_KEY"
+          fpr=$(python3 -c "import json;print(json.load(open('config/release.json'))['signing_key_fingerprint'])")
+          umask 077
+          mkdir -p "$RUNNER_TEMP/keys" dist/meta dist/repo
+          printf '%s\n' "$TREE_SIGNING_KEY" > "$RUNNER_TEMP/keys/secret.asc"
+          python3 scripts/make_updateinfo.py dist/meta/updateinfo.xml
+          cp config/release.json dist/meta/release.json
+          docker build --file build/Dockerfile.repo --tag tree-centos6-repo:release .
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            -e KEY_FPR="$fpr" -e TREE_SIGNING_PASSPHRASE -e OUT_UID="$(id -u)" -e OUT_GID="$(id -g)" \
+            -v "$PWD:/work:ro" -v "$PWD/dist/candidate:/candidate:ro" -v "$PWD/dist/meta:/meta:ro" \
+            -v "$RUNNER_TEMP/keys:/keys:ro" -v "$PWD/dist/repo:/repo" \
+            tree-centos6-repo:release bash /work/scripts/build_signed_repo.sh
+          rm -rf "$RUNNER_TEMP/keys"
+      - name: Re-test the exact repository that will be published
+        run: |
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/repo:/repo:ro" \
+            -v "$PWD/dist/candidate:/candidate:ro" \
+            tree-centos6-repo:release bash /tests/signed_yum_update.sh
+      - name: Add landing page
+        run: cp docs/yum-index.html dist/repo/index.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/repo
+      - id: deploy
+        uses: actions/deploy-pages@v4

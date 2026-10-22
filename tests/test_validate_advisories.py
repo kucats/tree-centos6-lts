@@ -16,7 +16,7 @@ class ValidatorTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / "config").mkdir()
         (self.root / "security/advisories").mkdir(parents=True)
-        (self.root / "patches").mkdir()
+        (self.root / "packages/openssl").mkdir(parents=True)
         (self.root / "config/packages.json").write_text(
             json.dumps({"packages": [{"name": "openssl"}]}), encoding="utf-8"
         )
@@ -39,19 +39,19 @@ class ValidatorTests(unittest.TestCase):
 
     def test_fixed_requires_patch_evidence_and_checksum(self):
         patch = b"test patch content\n"
-        (self.root / "patches/fix.patch").write_bytes(patch)
+        (self.root / "packages/openssl/fix.patch").write_bytes(patch)
         doc = {
             **self.base,
             "status": "fixed",
             "upstream_reference": "https://example.org/commit/42",
             "reviewed_by": "reviewer-1",
             "tests": ["https://example.org/test-report"],
-            "patch_path": "patches/fix.patch",
+            "patch_path": "packages/openssl/fix.patch",
             "patch_sha256": hashlib.sha256(patch).hexdigest(),
         }
         self.assertEqual(self.validate(doc), [])
         self.assertIn("patch_sha256 mismatch", self.validate({**doc, "patch_sha256": "0" * 64}))
-        self.assertTrue(self.validate({**doc, "patch_path": "patches/../../etc/passwd"}))
+        self.assertTrue(self.validate({**doc, "patch_path": "packages/openssl/../../etc/passwd"}))
 
     def test_not_affected_requires_review(self):
         doc = {**self.base, "status": "not_affected", "reviewed_by": "reviewer-2"}
