@@ -5,6 +5,7 @@ on:
       - "packages/openssh/**"
       - "scripts/build_openssh_candidate.sh"
       - "tests/integration/openssh_agent_pkcs11_deny.sh"
+      - "tests/integration/openssh_offline_yum_upgrade.sh"
       - "build/Dockerfile.openssh-candidate"
       - ".github/workflows/openssh-candidate.yml"
   workflow_dispatch:
@@ -43,6 +44,13 @@ jobs:
             --cap-drop ALL --security-opt no-new-privileges \
             -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/openssh-candidate:/out:ro" \
             centos6-openssh-candidate:research bash /tests/openssh_agent_pkcs11_deny.sh
+      - name: Exercise unsigned local file yum upgrade without network
+        run: |
+          docker run --rm --network none --cpus 2 --memory 3g --pids-limit 256 \
+            --security-opt no-new-privileges \
+            -v "$PWD/tests/integration:/tests:ro" \
+            -v "$PWD/dist/openssh-candidate:/out:ro" \
+            centos6-openssh-candidate:research bash /tests/openssh_offline_yum_upgrade.sh
       - name: Retain only unsigned temporary research RPMs
         if: success()
         uses: actions/upload-artifact@v4
