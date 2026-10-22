@@ -1,0 +1,48 @@
+name: CentOS 6 source inventory and CVE scope
+on:
+  pull_request:
+    paths:
+      - "config/source-inventory.json"
+      - "config/cve-scope-candidates.json"
+      - "scripts/verify_scope.py"
+      - "tests/test_scope.py"
+      - ".github/workflows/source-scope.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: source-scope-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate version bounds and repository metadata
+        run: |
+          python3 -m unittest discover -s tests -v
+          python3 scripts/verify_scope.py validate
+      - name: Fetch archived SRPMs (research-only; unpinned curl until audited)
+        run: python3 scripts/verify_scope.py fetch --allow-unpinned
+      - name: Inspect CentOS 6 SRPM headers in offline container
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 128 --memory 512m \
+            -v "$PWD/dist/sources:/sources:ro" \
+            centos:6@sha256:a93df2e96e07f56ea48f215425c6f1673ab922927894595bb5c0ee4c5a955133 \
+            /bin/bash -c 'for f in /sources/*.src.rpm; do rpm -qp --qf "%{NAME}\t%{VERSION}\t%{RELEASE}\n" "$f" || exit 1; done' \
+            > dist/sources/rpm-headers.tsv
+          python3 scripts/verify_scope.py assess
+      - name: Save research evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-scope-research-not-a-security-release
+          path: |
+            dist/sources/rpm-headers.tsv
+            dist/sources/scope-report.json
+          retention-days: 7
