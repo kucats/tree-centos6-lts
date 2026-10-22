@@ -1,0 +1,53 @@
+name: CentOS 6 OpenSSH source/provenance audit
+on:
+  pull_request:
+    paths:
+      - "security/advisories/CVE-2023-38408.json"
+      - "security/advisories/CVE-2024-6387.json"
+      - "scripts/audit_openssh_source.sh"
+      - ".github/workflows/openssh-source-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: openssh-source-audit-\${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Obtain historical CentOS OpenSSH source RPM
+        run: |
+          set -euo pipefail
+          mkdir -p dist/openssh
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --max-time 120 \
+            https://vault.centos.org/6.10/updates/Source/SPackages/openssh-5.3p1-124.el6_10.src.rpm \
+            --output dist/openssh/openssh-5.3p1-124.el6_10.src.rpm
+          sha256sum dist/openssh/*.src.rpm | tee dist/openssh/OBSERVED-SOURCE.sha256
+          echo '::notice::Checksum is research evidence until pinned in source inventory.'
+      - name: Independently verify official CentOS GPG signature
+        run: bash scripts/verify_source_signatures.sh dist/openssh dist/openssh/provenance
+      - name: Inspect patched OpenSSH SRPM offline without running ssh-agent
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --pids-limit 128 --memory 512m \
+            --tmpfs /tmp:rw,nosuid,nodev,size=128m \
+            -v "$PWD/dist/openssh:/sources:ro" \
+            -v "$PWD/scripts/audit_openssh_source.sh:/audit.sh:ro" \
+            centos:6@sha256:a93df2e96e07f56ea48f215425c6f1673ab922927894595bb5c0ee4c5a955133 \
+            bash /audit.sh | tee dist/openssh/SOURCE-INSPECTION.txt
+      - name: Retain audit evidence without executable package artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: centos6-openssh-SOURCE-AUDIT-only
+          path: |
+            dist/openssh/OBSERVED-SOURCE.sha256
+            dist/openssh/SOURCE-INSPECTION.txt
+            dist/openssh/provenance/*
+          if-no-files-found: ignore
+          retention-days: 7
