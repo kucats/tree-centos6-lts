@@ -39,6 +39,9 @@ AllowTcpForwarding no
 X11Forwarding no
 LogLevel VERBOSE
 EOF
+gcc -shared -fPIC -o "$tmp/probe.so" /tests/ssh_agent_provider_probe.c
+export TREE_AGENT_PROBE_MARKER="$tmp/module-was-loaded"
+test ! -e "$TREE_AGENT_PROBE_MARKER"
 /usr/sbin/sshd -t -f "$tmp/sshd_config"
 /usr/sbin/sshd -D -e -f "$tmp/sshd_config" > "$tmp/sshd.log" 2>&1 &
 echo "$!" > "$tmp/sshd.pid"
@@ -67,9 +70,6 @@ if test "$connected" -ne 1; then
 fi
 echo 'PASS: candidate SSH client authenticated to isolated loopback sshd'
 
-gcc -shared -fPIC -o "$tmp/probe.so" /tests/ssh_agent_provider_probe.c
-export TREE_AGENT_PROBE_MARKER="$tmp/module-was-loaded"
-test ! -e "$TREE_AGENT_PROBE_MARKER"
 connection python - "$tmp/probe.so" <<'PY'
 import os, socket, struct, sys
 path = os.environ.get('SSH_AUTH_SOCK')
