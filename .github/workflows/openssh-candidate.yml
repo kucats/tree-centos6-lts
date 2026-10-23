@@ -5,6 +5,7 @@ on:
       - "packages/openssh/**"
       - "scripts/build_openssh_candidate.sh"
       - "tests/integration/openssh_agent_pkcs11_deny.sh"
+      - "tests/integration/ssh_agent_provider_probe.c"
       - "tests/integration/openssh_offline_yum_upgrade.sh"
       - "build/Dockerfile.openssh-candidate"
       - ".github/workflows/openssh-candidate.yml"
