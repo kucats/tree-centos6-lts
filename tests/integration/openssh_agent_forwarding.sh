@@ -83,11 +83,14 @@ def recv_exact(sock, count):
         assert part
         result += part
     return result
-for typ in (20, 21, 26):
+for typ in (20, 21, 26, 30, 31, 32):
     conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     conn.settimeout(5)
     conn.connect(path)
-    payload = chr(typ) + string(sys.argv[1]) + string('')
+    if typ in (30, 31, 32):
+        payload = chr(typ) + string("ProbeToken") + string("ProbeKey") + string("")
+    else:
+        payload = chr(typ) + string(sys.argv[1]) + string('')
     conn.sendall(struct.pack('>I', len(payload)) + payload)
     length = struct.unpack('>I', recv_exact(conn, 4))[0]
     assert length == 1, (typ, length)
