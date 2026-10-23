@@ -21,6 +21,11 @@ readelf -d "$temp/package/usr/bin/ssh-agent" | sed -n 's/.*Shared library: \[\([
 test -s "$temp/baseline-libs" && test -s "$temp/candidate-libs"
 diff -u "$temp/baseline-libs" "$temp/candidate-libs"
 echo 'PASS: ssh-agent ELF DT_NEEDED dependencies unchanged'
+# Benign dynamic library contains only a constructor marker, no PKCS11 API.
+# If even a failed provider load occurs, the constructor must not execute.
+gcc -shared -fPIC -o "$temp/probe.so" /tests/ssh_agent_provider_probe.c
+export TREE_AGENT_PROBE_MARKER="$temp/provider-loaded"
+test ! -e "$TREE_AGENT_PROBE_MARKER"
 # Use explicit test key and isolated Unix socket, never a production key.
 ssh-keygen -q -t rsa -b 2048 -N '' -f "$temp/id_rsa"
 eval "$(ssh-agent -s -a "$temp/agent.sock")"
@@ -32,9 +37,10 @@ echo 'PASS: ordinary RSA key add/list works'
 
 # Observe protocol 20 and 26/21 directly without an executable provider library.
 # These messages should fail before parsing strings or loading any modules.
-python - "$SSH_AUTH_SOCK" <<'PY'
+python - "$SSH_AUTH_SOCK" "$temp/probe.so" <<'PY'
 import socket, struct, sys
 sockpath = sys.argv[1]
+provider_path = sys.argv[2]
 # Confirm the agent still performs an actual SSH2 signature using the test key.
 # No server, network or privileged target is involved.
 import base64, subprocess
@@ -74,8 +80,9 @@ for typ in (20, 21, 26):
     client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     client.settimeout(5)
     client.connect(sockpath)
-    # Type-only request intentionally carries no library path or PIN.
-    payload = chr(typ)
+    # Syntactically well-formed request: provider path plus empty PIN.
+    # Without this, even a vulnerable unpatched agent may return FAILURE.
+    payload = chr(typ) + string(provider_path) + string("")
     client.sendall(struct.pack(">I", len(payload)) + payload)
     def read_exact(count):
         buf = ''
@@ -90,5 +97,10 @@ for typ in (20, 21, 26):
     status = ord(read_exact(1))
     assert status == 5, (typ, status)  # SSH_AGENT_FAILURE
     client.close()
-    print("PASS: PKCS11 agent request type %d denied safely" % typ)
+    print("PASS: valid PKCS11 agent request type %d denied" % typ)
 PY
+test ! -e "$TREE_AGENT_PROBE_MARKER" || {
+  echo 'FAIL: agent executed benign provider constructor' >&2
+  exit 1
+}
+echo 'PASS: syntactically valid requests did not load a benign shared object'
