@@ -49,7 +49,7 @@ jobs:
       - name: Test actual SSH agent forwarding through isolated localhost sshd
         run: |
           docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
-            --cap-drop ALL --cap-add AUDIT_WRITE --security-opt no-new-privileges \
+            --cap-drop ALL --cap-add AUDIT_WRITE --cap-add SETGID --cap-add SETUID --security-opt no-new-privileges \
             -v "$PWD/tests/integration:/tests:ro" \
             -v "$PWD/dist/openssh-candidate:/out:ro" \
             centos6-openssh-candidate:research bash /tests/openssh_agent_forwarding.sh
