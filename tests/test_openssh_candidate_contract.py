@@ -27,11 +27,15 @@ class AgentDenyContract(unittest.TestCase):
         self.assertEqual(patch.count("-\t\tprocess_remove_smartcard_key(e);"), 1)
         self.assertEqual(patch.count("+\t\tbuffer_put_char(&e->output, SSH_AGENT_FAILURE);"), 2)
         self.assertNotIn("SSH2_AGENTC_ADD_IDENTITY", patch)
+        nss_patch = (ROOT / "packages/openssh/CVE-2023-38408-deny-nss-agent.patch").read_text()
+        self.assertIn("-\t\tprocess_add_nss_key(e);", nss_patch)
+        self.assertIn("-\t\tprocess_remove_nss_key(e);", nss_patch)
+        self.assertIn("SSH_AGENT_FAILURE", nss_patch)
 
     def test_integration_covers_signing_and_three_request_types(self):
         script = (ROOT / "tests/integration/openssh_agent_pkcs11_deny.sh").read_text()
         self.assertIn("normal SSH2 agent RSA signature response retained", script)
-        self.assertIn("(20, 21, 26)", script)
+        self.assertIn("(20, 21, 26, 30, 31, 32)", script)
         self.assertIn("DT_NEEDED dependencies unchanged", script)
         self.assertIn("rpm2cpio", script)
         yum = (ROOT / "tests/integration/openssh_offline_yum_upgrade.sh").read_text()
