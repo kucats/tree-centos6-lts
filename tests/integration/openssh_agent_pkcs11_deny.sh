@@ -76,13 +76,17 @@ assert siglen >= 16 and siglen == len(reply) - 5, siglen
 client.close()
 print("PASS: normal SSH2 agent RSA signature response retained")
 
-for typ in (20, 21, 26):
+for typ in (20, 21, 26, 30, 31, 32):
     client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     client.settimeout(5)
     client.connect(sockpath)
     # Syntactically well-formed request: provider path plus empty PIN.
     # Without this, even a vulnerable unpatched agent may return FAILURE.
-    payload = chr(typ) + string(provider_path) + string("")
+    if typ in (30, 31, 32):
+        # Red Hat NSS agent extension: token, key label and PIN.
+        payload = chr(typ) + string("ProbeToken") + string("ProbeKey") + string("")
+    else:
+        payload = chr(typ) + string(provider_path) + string("")
     client.sendall(struct.pack(">I", len(payload)) + payload)
     def read_exact(count):
         buf = ''
