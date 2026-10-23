@@ -37,5 +37,11 @@ features ssh_client_ControlPersist 'ControlPersist|controlpersist' "$(dirname "$
 features sshd_GSSAPIAuthentication 'GSSAPIAuthentication|gssapiauthentication' "$(dirname "$src")/servconf.c"
 features sshd_PermitTunnel 'PermitTunnel|permittunnel' "$(dirname "$src")/servconf.c"
 features ssh_packet_zlib '(uncompress|deflate|inflate)' "$(dirname "$src")/packet.c"
+echo '--- Agent smartcard request dispatch (for minimal hardened patch design) ---'
+grep -n -E 'SSH_AGENTC_(ADD|REMOVE)_SMARTCARD|process_add_smartcard_key|process_remove_smartcard_key|case SSH_AGENTC_' "$src" | tail -55
+echo '--- Exact agent dispatcher lines (no private data; public source) ---'
+sed -n '940,1045p' "$src"
+echo '--- Agent smartcard helper lines ---'
+sed -n '700,805p' "$src"
 echo 'PASS: signed CentOS source RPM applies PKCS11 support in prepared ssh-agent implementation'
 echo 'LIMIT: compilation/runtime exposure and exploitability still require independent tests.'

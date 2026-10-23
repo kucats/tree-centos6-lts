@@ -75,6 +75,25 @@ sudo 1.8.2 through 1.8.31p2 is affected, and CentOS 6.10's final `sudo-1.8.6p3-2
 
 No signed yum repository, production-ready update, or comprehensive CentOS 6 CVE coverage has been established.
 
+## Experimental CVE-2023-38408 mitigation: deny PKCS#11 and vendor NSS smartcard agent requests
+
+**Research preview only, not a reviewed security release.** CentOS 6.10 `openssh-5.3p1-124.el6_10` contains Red Hat's PKCS#11 and NSS smartcard-agent backports, although upstream 5.3p1 predates the listed upstream affected range. The old agent cannot reliably distinguish local agent requests from SSH-forwarded ones. Our conservative mitigation therefore disables both the standard PKCS#11 agent protocol (types 20, 21, 26) and Red Hat's separate NSS token protocol (types 30, 31, 32) **for all clients**, including local smartcard users.
+
+The two small source patches modify only request dispatch calls: [`CVE-2023-38408-deny-pkcs11.patch`](packages/openssh/CVE-2023-38408-deny-pkcs11.patch) and [`CVE-2023-38408-deny-nss-agent.patch`](packages/openssh/CVE-2023-38408-deny-nss-agent.patch). Original PKCS#11 and NSS loader functions remain in source but are no longer reachable through the six agent request types. This does **not** establish absence of every possible provider-loading path, and it is not equivalent to OpenSSH 9.3p2's remote-only policy.
+
+[All research E2E checks succeeded](https://github.com/kucats/tree-centos6-lts/actions/runs/39878558145), including:
+
+- Pin and GPG-signature verification of the official CentOS 6.10 source RPM, application of the complete vendor patch stack, then both candidate patches; build of x86_64 RPMs plus a matching source RPM.
+- With network access blocked, the packaged `ssh-agent` accepts and lists a new local RSA key and returns an SSH2 RSA signing response.
+- All six syntactically well-formed PKCS#11/NSS smartcard add/remove requests return `SSH_AGENT_FAILURE`. A benign test module constructor was **not** run.
+- A real localhost `ssh -A` connection to an isolated CentOS 6 `sshd` forwards the candidate agent socket; all six types are denied over that socket while ordinary forwarded RSA key listing still works. This is a targeted loopback test, not a comprehensive client/server interoperability suite.
+- Candidate agent `DT_NEEDED` has no new direct libraries. The only removed dependency is `libplc4.so`, attributed to disabling the NSS token request path; this change requires independent review.
+- Offline file-based yum transaction updates the related `openssh`, `openssh-clients` and `openssh-server` packages together from `5.3p1-124.el6_10` to `5.3p1-124.el6_10.tree1` in a disposable, networkless CentOS 6 container.
+
+**Compatibility:** local `ssh-add -s` PKCS#11 smartcard support and the Red Hat NSS token agent extension are intentionally disabled. Any deployment must identify affected legitimate users, and needs independent code review, FIPS/SELinux testing, non-loopback integration in a controlled lab, RPM and repository GPG signing, and full CVE applicability assessment. The test-only local yum transaction disables GPG checks **only inside an isolated throwaway container**. Never copy that setting to production.
+
+The formal CVE status remains `pending` and release readiness remains `blocked`. These unsigned CI RPMs are not approved for installation or redistribution.
+
 ## October 2026 historical CVE applicability audit
 
 The existing candidate sudo `.tree1` RPM includes pending patches for CVE-2021-3156 and CVE-2023-22809; this does **not** establish complete sudo security coverage or production readiness.
