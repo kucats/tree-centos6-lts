@@ -6,6 +6,7 @@ on:
       - "scripts/build_openssh_candidate.sh"
       - "tests/integration/openssh_agent_pkcs11_deny.sh"
       - "tests/integration/ssh_agent_provider_probe.c"
+      - "tests/integration/openssh_agent_forwarding.sh"
       - "tests/integration/openssh_offline_yum_upgrade.sh"
       - "build/Dockerfile.openssh-candidate"
       - ".github/workflows/openssh-candidate.yml"
@@ -45,6 +46,13 @@ jobs:
             --cap-drop ALL --security-opt no-new-privileges \
             -v "$PWD/tests/integration:/tests:ro" -v "$PWD/dist/openssh-candidate:/out:ro" \
             centos6-openssh-candidate:research bash /tests/openssh_agent_pkcs11_deny.sh
+      - name: Test actual SSH agent forwarding through isolated localhost sshd
+        run: |
+          docker run --rm --network none --cpus 2 --memory 2g --pids-limit 256 \
+            --cap-drop ALL --security-opt no-new-privileges \
+            -v "$PWD/tests/integration:/tests:ro" \
+            -v "$PWD/dist/openssh-candidate:/out:ro" \
+            centos6-openssh-candidate:research bash /tests/openssh_agent_forwarding.sh
       - name: Exercise unsigned local file yum upgrade without network
         run: |
           docker run --rm --network none --cpus 2 --memory 3g --pids-limit 256 \
