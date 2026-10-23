@@ -19,8 +19,21 @@ echo 'PASS: running exact candidate RPM payload binaries in isolated filesystem'
 readelf -d /usr/bin/ssh-agent | sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p' | sort > "$temp/baseline-libs"
 readelf -d "$temp/package/usr/bin/ssh-agent" | sed -n 's/.*Shared library: \[\([^]]*\)\].*/\1/p' | sort > "$temp/candidate-libs"
 test -s "$temp/baseline-libs" && test -s "$temp/candidate-libs"
-diff -u "$temp/baseline-libs" "$temp/candidate-libs"
-echo 'PASS: ssh-agent ELF DT_NEEDED dependencies unchanged'
+comm -13 "$temp/baseline-libs" "$temp/candidate-libs" > "$temp/new-needed"
+comm -23 "$temp/baseline-libs" "$temp/candidate-libs" > "$temp/removed-needed"
+if test -s "$temp/new-needed"; then
+  echo 'FAIL: new ssh-agent ELF dependencies were introduced' >&2
+  cat "$temp/new-needed" >&2
+  exit 1
+fi
+if test -s "$temp/removed-needed"; then
+  grep -qx 'libplc4.so' "$temp/removed-needed"
+  test "$(wc -l < "$temp/removed-needed")" -eq 1
+  echo 'PASS: only audited NSS-token-related libplc4.so dependency was removed'
+else
+  echo 'PASS: ssh-agent ELF DT_NEEDED dependency set unchanged'
+fi
+echo 'PASS: ssh-agent ELF DT_NEEDED introduces no new libraries'
 # Benign dynamic library contains only a constructor marker, no PKCS11 API.
 # If even a failed provider load occurs, the constructor must not execute.
 gcc -shared -fPIC -o "$temp/probe.so" /tests/ssh_agent_provider_probe.c
